@@ -9,6 +9,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ConsoleApp_ML", "ConsoleApp
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ConsoleApp_DirectML", "ConsoleApp_DirectML\ConsoleApp_DirectML.csproj", "{F72D0A21-D377-42C6-BCEB-041EBFFCDABC}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ConsoleApp_Phi4", "ConsoleApp_Phi4\ConsoleApp_Phi4.csproj", "{16765FF1-F2D9-4156-AD5E-DB43607FA026}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SemanticKernel_Skills", "SemanticKernel_Skills\SemanticKernel_Skills.csproj", "{109B3981-9D90-4B53-A855-CC60D03FEEC9}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -27,6 +31,14 @@ Global
 		{F72D0A21-D377-42C6-BCEB-041EBFFCDABC}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{F72D0A21-D377-42C6-BCEB-041EBFFCDABC}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{F72D0A21-D377-42C6-BCEB-041EBFFCDABC}.Release|Any CPU.Build.0 = Release|Any CPU
+		{16765FF1-F2D9-4156-AD5E-DB43607FA026}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{16765FF1-F2D9-4156-AD5E-DB43607FA026}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{16765FF1-F2D9-4156-AD5E-DB43607FA026}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{16765FF1-F2D9-4156-AD5E-DB43607FA026}.Release|Any CPU.Build.0 = Release|Any CPU
+		{109B3981-9D90-4B53-A855-CC60D03FEEC9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{109B3981-9D90-4B53-A855-CC60D03FEEC9}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{109B3981-9D90-4B53-A855-CC60D03FEEC9}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{109B3981-9D90-4B53-A855-CC60D03FEEC9}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
