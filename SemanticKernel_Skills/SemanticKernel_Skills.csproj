@@ -14,4 +14,8 @@
     <PackageReference Include="Spectre.Console" Version="0.54.0" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Connectors.Onnx\" />
+  </ItemGroup>
+
 </Project>

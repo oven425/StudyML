@@ -1,9 +1,10 @@
 ﻿//using feiyun0112.SemanticKernel.Connectors.OnnxRuntimeGenAI;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.ChatCompletion;
-using Microsoft.SemanticKernel.Connectors.Onnx;
-using Microsoft.SemanticKernel.Connectors.OpenAI;
 
+//using Microsoft.SemanticKernel.Connectors.Onnx;
+using Microsoft.SemanticKernel.Connectors.OpenAI;
+//using QSoft.SemanticKernel.Connectors.Onnx;
 //using Phi3OnnxConsole.Utils;
 using Spectre.Console;
 using System.ComponentModel;
@@ -16,7 +17,8 @@ modelPath = "..\\..\\..\\..\\onnx_phi4\\CPU-Phi-4-mini-instruct-onnx";
 
 var fullpath = Path.GetFullPath(modelPath);
 var builder = Kernel.CreateBuilder();
-builder.AddOnnxRuntimeGenAIChatCompletion("phi4", fullpath);
+QSoft.SemanticKernel.OnnxKernelBuilderExtensions.AddOnnxRuntimeGenAIChatCompletion(builder, "phi4", fullpath);
+//builder.AddOnnxRuntimeGenAIChatCompletion("phi4", fullpath);
 builder.Plugins.AddFromType<TimePlugin>("TimeModule");
 
 
@@ -36,20 +38,19 @@ foreach (var plugin in kernel.Plugins)
 
 var chatService = kernel.GetRequiredService<IChatCompletionService>();
 
-var aaa = chatService as OnnxRuntimeGenAIChatCompletionService;
+var aaa = chatService as QSoft.SemanticKernel.Connectors.Onnx.OnnxRuntimeGenAIChatCompletionService;
 
 var history = new ChatHistory();
 history.AddSystemMessage("你是一個專業的助理。請盡量使用你擁有的工具來回答用戶的實時問題。");
 history.AddUserMessage("獲取當前的本地日期與時間");
 
-var executionSettings = new OnnxRuntimeGenAIPromptExecutionSettings
+var executionSettings = new Microsoft.SemanticKernel.Connectors.Onnx.OnnxRuntimeGenAIPromptExecutionSettings
 {
-    FunctionChoiceBehavior = FunctionChoiceBehavior.Auto()
 };
+executionSettings.MaxTokens = 2048;
 
 
-
-var response = await chatService.GetChatMessageContentAsync(history, executionSettings, kernel);
+var response = await aaa.GetChatMessageContentAsync(history, executionSettings);
 Console.WriteLine($"AI: {response.Content}");
 
 public class TimePlugin

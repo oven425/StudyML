@@ -12,7 +12,7 @@ using Config config = new Config(modelPath);
 config.ClearProviders();
 //config.AppendProvider("DML");
 
-
+//OnnxRuntimeGenAIChatClient
 using Model model = new(config);
 using Tokenizer tokenizer = new(model);
 

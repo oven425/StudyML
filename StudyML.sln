@@ -3,8 +3,6 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.14.36203.30
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ConsoleApp1", "ConsoleApp1\ConsoleApp1.csproj", "{6A082F07-E806-4041-B73C-27C7220D5230}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ConsoleApp_ML", "ConsoleApp_ML\ConsoleApp_ML.csproj", "{6D4A9127-74F8-4FEA-B9C9-A584DBC67ED4}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ConsoleApp_DirectML", "ConsoleApp_DirectML\ConsoleApp_DirectML.csproj", "{F72D0A21-D377-42C6-BCEB-041EBFFCDABC}"
@@ -19,10 +17,6 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{6A082F07-E806-4041-B73C-27C7220D5230}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{6A082F07-E806-4041-B73C-27C7220D5230}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{6A082F07-E806-4041-B73C-27C7220D5230}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{6A082F07-E806-4041-B73C-27C7220D5230}.Release|Any CPU.Build.0 = Release|Any CPU
 		{6D4A9127-74F8-4FEA-B9C9-A584DBC67ED4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{6D4A9127-74F8-4FEA-B9C9-A584DBC67ED4}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{6D4A9127-74F8-4FEA-B9C9-A584DBC67ED4}.Release|Any CPU.ActiveCfg = Release|Any CPU
