@@ -1,18 +1,79 @@
 ﻿// See https://aka.ms/new-console-template for more information
+using Microsoft.Extensions.AI;
 using Microsoft.ML.OnnxRuntimeGenAI;
 using System.Reflection;
 using System.Reflection.Emit;
 using System.Text;
+using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
 
 string modelPath = @"..\..\..\..\onnx_phi4\CPU";
 modelPath = "..\\..\\..\\..\\onnx_phi4\\CPU-Phi-4-mini-instruct-onnx";
+var fullpath = Path.GetFullPath(modelPath);
 System.Diagnostics.Trace.WriteLine(DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff"));
 using Config config = new Config(modelPath);
 config.ClearProviders();
 //config.AppendProvider("DML");
+OnnxRuntimeGenAIChatClientOptions options = new();
+options.PromptFormatter = (IEnumerable<ChatMessage> messages, ChatOptions? options) =>
+{
+    return "";
+    //SerializableMessage1 m = new();
 
-//OnnxRuntimeGenAIChatClient
+    //StringBuilder prompt = new();
+    //string separator = "";
+    //prompt.Append('[');
+
+    //if (options?.Instructions is { } instructions)
+    //{
+    //    m.Role = ChatRole.System.Value;
+    //    m.Content = instructions;
+    //    prompt.Append(JsonSerializer.Serialize(m, OnnxJsonContext.Default.SerializableMessage));
+    //    separator = ",";
+    //}
+
+    //foreach (var message in messages)
+    //{
+    //    if (message.Text is string text)
+    //    {
+    //        prompt.Append(separator);
+    //        separator = ",";
+
+    //        m.Role = message.Role.Value;
+    //        m.Content = text;
+    //        prompt.Append(JsonSerializer.Serialize(m, OnnxJsonContext.Default.SerializableMessage));
+    //    }
+    //}
+
+    //prompt.Append(']');
+
+    //return _tokenizer.ApplyChatTemplate(
+    //    template_str: null,
+    //    messages: prompt.ToString(),
+    //    tools: null,
+    //    add_generation_prompt: true);
+};
+OnnxRuntimeGenAIChatClient cc = new OnnxRuntimeGenAIChatClient(fullpath, options);
+ChatMessage systemMessage = new(ChatRole.System, "You are a helpful assistant with some tools.");
+ChatMessage toolMessage = new(ChatRole.Tool, @"[{""name"": ""getcomputerdatetime"", ""description"": ""Gets the current date and time of this computer."", ""parameters"": {}}]");
+ChatMessage userMessage = new(ChatRole.User, "What time is this computer?");
+ChatMessage assistantMessage = new(ChatRole.Assistant, "");
+
+await foreach(var oo in  cc.GetStreamingResponseAsync([systemMessage, toolMessage, userMessage, assistantMessage]))
+{
+    Console.Write(oo);
+}
+
+ChatMessage toolMessageresult = new(ChatRole.Tool, $"{DateTime.Now}");
+await foreach (var oo in cc.GetStreamingResponseAsync([systemMessage, toolMessage, userMessage, assistantMessage, toolMessageresult, assistantMessage]))
+{
+    Console.Write(oo);
+}
+
+
+//ChatMessage userMessage = new(ChatRole., "What time is this computer?");
+//var prompt21 = $"{strb}<|end|><|tool_result|>{DateTime.Now}<|end|><|assistant|>";
+
 using Model model = new(config);
 using Tokenizer tokenizer = new(model);
 
@@ -109,3 +170,5 @@ public class ToolCall
     public string name { get; set; }
     public object arguments { get; set; } // 若 arguments 結構固定，可換成具體類別
 }
+
+
