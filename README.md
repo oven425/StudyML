@@ -12,3 +12,7 @@
 ## Qwen3.5-0.8B-ONNX 
 [link](https://huggingface.co/onnx-community/Qwen3.5-0.8B-ONNX/tree/main)
 
+
+##
+[link](https://huggingface.co/Intel/whisper-large-onnx-int4-inc/tree/main)
+
