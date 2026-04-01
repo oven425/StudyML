@@ -299,12 +299,15 @@ public sealed partial class OnnxRuntimeGenAIChatClient1 : IChatClient
         }
 
         prompt.Append(']');
+        var promptStr = prompt.ToString();
+        var prompt1 = @"<|system|>You are a helpful assistant with some tools.<|tool|>[{""name"": ""getcomputerdatetime"", ""description"": ""Gets the current date and time of this computer."", ""parameters"": {}}]<|/tool|><|end|><|user|>What time is this computer?<|end|><|assistant|>";
 
-        return _tokenizer.ApplyChatTemplate(
+        var charstr = _tokenizer.ApplyChatTemplate(
             template_str: null,
             messages: prompt.ToString(),
             tools: null,
-            add_generation_prompt: true);
+            add_generation_prompt: true); ;
+        return charstr;
     }
 
     private sealed class SerializableMessage
