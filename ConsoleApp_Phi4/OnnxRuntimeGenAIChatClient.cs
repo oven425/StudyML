@@ -21,11 +21,11 @@ public sealed partial class OnnxRuntimeGenAIChatClient1 : IChatClient
     /// <summary>Options used to configure the instance's behavior.</summary>
     private readonly OnnxRuntimeGenAIChatClientOptions? _options;
     /// <summary>The wrapped <see cref="Model"/>.</summary>
-    private readonly Model _model;
+    private readonly Model1 _model;
     /// <summary>The wrapped <see cref="Config"/>.</summary>
-    private readonly Config? _config;
+    private readonly Config1? _config;
     /// <summary>The wrapped <see cref="Tokenizer"/>.</summary>
-    private readonly Tokenizer _tokenizer;
+    private readonly Tokenizer1 _tokenizer;
     /// <summary>Whether to dispose of <see cref="_model"/> when this instance is disposed.</summary>
     private readonly bool _ownsModel;
     /// <summary>Whether to dispose of <see cref="_config"/> when this instance is disposed.</summary>
@@ -51,8 +51,8 @@ public sealed partial class OnnxRuntimeGenAIChatClient1 : IChatClient
         _ownsModel = true;
         _ownsConfig = false;
         _config = null;
-        _model = new Model(modelPath);
-        _tokenizer = new Tokenizer(_model);
+        _model = new Model1(modelPath);
+        _tokenizer = new Tokenizer1(_model);
         _options = options;
 
         _metadata = new("onnx", new Uri($"file://{modelPath}"), modelPath);
@@ -67,7 +67,7 @@ public sealed partial class OnnxRuntimeGenAIChatClient1 : IChatClient
     /// </param>
     /// <param name="options">Options used to configure the client instance.</param>
     /// <exception cref="ArgumentNullException"><paramref name="model"/> is <see langword="null"/>.</exception>
-    public OnnxRuntimeGenAIChatClient1(Model model, bool ownsModel = true, OnnxRuntimeGenAIChatClientOptions? options = null)
+    public OnnxRuntimeGenAIChatClient1(Model1 model, bool ownsModel = true, OnnxRuntimeGenAIChatClientOptions? options = null)
     {
         if (model is null)
         {
@@ -78,7 +78,7 @@ public sealed partial class OnnxRuntimeGenAIChatClient1 : IChatClient
         _ownsConfig = false;
         _config = null;
         _model = model;
-        _tokenizer = new Tokenizer(_model);
+        _tokenizer = new Tokenizer1(_model);
         _options = options;
 
         _metadata = new("onnx");
@@ -93,7 +93,7 @@ public sealed partial class OnnxRuntimeGenAIChatClient1 : IChatClient
     /// </param>
     /// <param name="options">Options used to configure the client instance.</param>
     /// <exception cref="ArgumentNullException"><paramref name="config"/> is <see langword="null"/>.</exception>
-    public OnnxRuntimeGenAIChatClient1(Config config, bool ownsConfig = true, OnnxRuntimeGenAIChatClientOptions? options = null)
+    public OnnxRuntimeGenAIChatClient1(Config1 config, bool ownsConfig = true, OnnxRuntimeGenAIChatClientOptions? options = null)
     {
         if (config is null)
         {
@@ -103,8 +103,8 @@ public sealed partial class OnnxRuntimeGenAIChatClient1 : IChatClient
         _ownsModel = true;
         _ownsConfig = ownsConfig;
         _config = config;
-        _model = new Model(_config);
-        _tokenizer = new Tokenizer(_model);
+        _model = new Model1(_config);
+        _tokenizer = new Tokenizer1(_model);
         _options = options;
 
         _metadata = new("onnx");
@@ -152,7 +152,7 @@ public sealed partial class OnnxRuntimeGenAIChatClient1 : IChatClient
             formatter(messages, options) :
             FormatPromptDefault(messages, options);
 
-        using Sequences tokens = _tokenizer.Encode(formattedPrompt);
+        using Sequences1 tokens = _tokenizer.Encode(formattedPrompt);
         int inputTokens = tokens[0].Length;
 
         // Check to see whether there's a cached generator. If there is, and if its id matches what we got from the client,
