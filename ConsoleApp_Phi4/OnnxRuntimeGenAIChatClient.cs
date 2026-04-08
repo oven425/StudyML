@@ -19,7 +19,7 @@ namespace Microsoft.ML.OnnxRuntimeGenAI;
 public sealed partial class OnnxRuntimeGenAIChatClient1 : IChatClient
 {
     /// <summary>Options used to configure the instance's behavior.</summary>
-    private readonly OnnxRuntimeGenAIChatClientOptions? _options;
+    private readonly OnnxRuntimeGenAIChatClientOptions1? _options;
     /// <summary>The wrapped <see cref="Model"/>.</summary>
     private readonly Model1 _model;
     /// <summary>The wrapped <see cref="Config"/>.</summary>
@@ -35,13 +35,13 @@ public sealed partial class OnnxRuntimeGenAIChatClient1 : IChatClient
 
     /// <summary>Cached information about the last generation to speed up a subsequent generation.</summary>
     /// <remarks>Only one is cached. Interlocked operations are used to take and return an instance from this cache.</remarks>
-    private CachedGenerator? _cachedGenerator;
+    private CachedGenerator1? _cachedGenerator;
 
     /// <summary>Initializes an instance of the <see cref="OnnxRuntimeGenAIChatClient"/> class.</summary>
     /// <param name="modelPath">The file path to the model to load.</param>
     /// <param name="options">Options used to configure the client instance.</param>
     /// <exception cref="ArgumentNullException"><paramref name="modelPath"/> is <see langword="null"/>.</exception>
-    public OnnxRuntimeGenAIChatClient1(string modelPath, OnnxRuntimeGenAIChatClientOptions? options = null)
+    public OnnxRuntimeGenAIChatClient1(string modelPath, OnnxRuntimeGenAIChatClientOptions1? options = null)
     {
         if (modelPath is null)
         {
@@ -67,7 +67,7 @@ public sealed partial class OnnxRuntimeGenAIChatClient1 : IChatClient
     /// </param>
     /// <param name="options">Options used to configure the client instance.</param>
     /// <exception cref="ArgumentNullException"><paramref name="model"/> is <see langword="null"/>.</exception>
-    public OnnxRuntimeGenAIChatClient1(Model1 model, bool ownsModel = true, OnnxRuntimeGenAIChatClientOptions? options = null)
+    public OnnxRuntimeGenAIChatClient1(Model1 model, bool ownsModel = true, OnnxRuntimeGenAIChatClientOptions1? options = null)
     {
         if (model is null)
         {
@@ -93,7 +93,7 @@ public sealed partial class OnnxRuntimeGenAIChatClient1 : IChatClient
     /// </param>
     /// <param name="options">Options used to configure the client instance.</param>
     /// <exception cref="ArgumentNullException"><paramref name="config"/> is <see langword="null"/>.</exception>
-    public OnnxRuntimeGenAIChatClient1(Config1 config, bool ownsConfig = true, OnnxRuntimeGenAIChatClientOptions? options = null)
+    public OnnxRuntimeGenAIChatClient1(Config1 config, bool ownsConfig = true, OnnxRuntimeGenAIChatClientOptions1? options = null)
     {
         if (config is null)
         {
@@ -113,7 +113,7 @@ public sealed partial class OnnxRuntimeGenAIChatClient1 : IChatClient
     /// <inheritdoc/>
     public void Dispose()
     {
-        if (Interlocked.Exchange(ref _cachedGenerator, null) is CachedGenerator cachedGenerator)
+        if (Interlocked.Exchange(ref _cachedGenerator, null) is CachedGenerator1 cachedGenerator)
         {
             cachedGenerator.Dispose();
         }
@@ -157,16 +157,16 @@ public sealed partial class OnnxRuntimeGenAIChatClient1 : IChatClient
 
         // Check to see whether there's a cached generator. If there is, and if its id matches what we got from the client,
         // we can use it; otherwise, we need to create a new one.
-        CachedGenerator? generator = Interlocked.Exchange(ref _cachedGenerator, null);
+        CachedGenerator1? generator = Interlocked.Exchange(ref _cachedGenerator, null);
         if (generator is null ||
             generator.ConversationId is null ||
             generator.ConversationId != options?.ConversationId)
         {
             generator?.Dispose();
 
-            using GeneratorParams p = new(_model); // we can dispose of this after we create the generator
+            using GeneratorParams1 p = new(_model); // we can dispose of this after we create the generator
             UpdateGeneratorParamsFromOptions(p, options, enableCaching, inputTokens);
-            generator = new(new Generator(_model, p));
+            generator = new(new Generator1(_model, p));
         }
 
         // If caching is enabled, generate a new ID to represent the state of the generator when we finish this response.
@@ -184,8 +184,7 @@ public sealed partial class OnnxRuntimeGenAIChatClient1 : IChatClient
             while (!generator.Generator.IsDone())
             {
                 // If we've reached a max output token limit, stop.
-                if (options?.MaxOutputTokens is int maxOutputTokens &&
-                    outputTokens >= maxOutputTokens)
+                if (options?.MaxOutputTokens is int maxOutputTokens && outputTokens >= maxOutputTokens)
                 {
                     break;
                 }
@@ -320,7 +319,7 @@ public sealed partial class OnnxRuntimeGenAIChatClient1 : IChatClient
     }
 
     /// <summary>Updates the <paramref name="generatorParams"/> based on the supplied <paramref name="options"/>.</summary>
-    private static void UpdateGeneratorParamsFromOptions(GeneratorParams generatorParams, ChatOptions? options, bool enableCaching, int inputTokens)
+    public static void UpdateGeneratorParamsFromOptions(GeneratorParams1 generatorParams, ChatOptions? options, bool enableCaching, int inputTokens)
     {
         if (options is null)
         {
@@ -362,7 +361,7 @@ public sealed partial class OnnxRuntimeGenAIChatClient1 : IChatClient
                 generatorParams.SetSearchOption("top_k", options.TopK.Value);
             }
 
-            generatorParams.SetSearchOption("do_sample", true);
+            //generatorParams.SetSearchOption("do_sample", true);
         }
 
         if (options.Seed.HasValue)
@@ -399,9 +398,9 @@ public sealed partial class OnnxRuntimeGenAIChatClient1 : IChatClient
         }
     }
 
-    private sealed class CachedGenerator(Generator generator) : IDisposable
+    private sealed class CachedGenerator1(Generator1 generator) : IDisposable
     {
-        public Generator Generator { get; } = generator;
+        public Generator1 Generator { get; } = generator;
 
         public string? ConversationId { get; set; }
 

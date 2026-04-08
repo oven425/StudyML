@@ -3,6 +3,7 @@ using Microsoft.Extensions.AI;
 using Microsoft.ML.OnnxRuntimeGenAI;
 using System.Reflection;
 using System.Reflection.Emit;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
@@ -14,137 +15,158 @@ System.Diagnostics.Trace.WriteLine(DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.ff
 using Config config = new Config(modelPath);
 config.ClearProviders();
 ////config.AppendProvider("DML");
+///
+Orgg();
+//await onnxclient();
 
-OnnxRuntimeGenAIChatClientOptions options = new OnnxRuntimeGenAIChatClientOptions();
-
-var cc = new OnnxRuntimeGenAIChatClient1(fullpath);
-ChatMessage systemMessage = new(ChatRole.System, "You are a helpful assistant with some tools.");
-ChatMessage toolMessage = new(ChatRole.Tool, @"[{""name"": ""getcomputerdatetime"", ""description"": ""Gets the current date and time of this computer."", ""parameters"": {}}]");
-ChatMessage userMessage = new(ChatRole.User, "What time is this computer?");
-ChatMessage assistantMessage = new(ChatRole.Assistant, "");
-
-ChatOptions chatOptions = new ChatOptions();
-chatOptions.Temperature = 0.0f;
-chatOptions.TopP = 1.0f;
-chatOptions.MaxOutputTokens = 300;
-
-await foreach (var oo in cc.GetStreamingResponseAsync([systemMessage, toolMessage, userMessage, assistantMessage], chatOptions))
+async Task onnxclient()
 {
-    Console.Write(oo);
-}
-
-ChatMessage toolMessageresult = new(ChatRole.Tool, $"{DateTime.Now}");
-await foreach (var oo in cc.GetStreamingResponseAsync([systemMessage, toolMessage, userMessage, assistantMessage, toolMessageresult, assistantMessage], chatOptions))
-{
-    Console.Write(oo);
-}
-
-
-fullpath = Path.GetFullPath(modelPath);
-using Model model = new(fullpath);
-using Tokenizer tokenizer = new(model);
-
-do
-{
-    Console.Write("\nPrompt: ");
-    var prompt = Console.ReadLine();
-    prompt = "What is OOP?";
-    if (string.IsNullOrEmpty(prompt))
-    {
-        continue;
-    }
-
-
-    //var sequences = tokenizer.Encode($"<|user|>\n{prompt}<|end|>\n<|assistant|>\n");
-    //var sequences = tokenizer.Encode(@"<|system|>You are a helpful assistant with some tools.<|tool|>[{""name"": ""get_weather_updates"", ""description"": ""Fetches weather updates for a given city using the RapidAPI Weather API."", ""parameters"": {""city"": {""description"": ""The name of the city for which to retrieve weather information."", ""type"": ""str"", ""default"": ""London""}}}]<|/tool|><|end|><|user|>What is the weather like in Taipe today?<|end|><|assistant|>");
-
-    var prompt1 = @"<|system|>You are a helpful assistant with some tools.<|tool|>[{""name"": ""getcomputerdatetime"", ""description"": ""Gets the current date and time of this computer."", ""parameters"": {}}]<|/tool|><|end|><|user|>What time is this computer?<|end|><|assistant|>";
-
-    tokenizer.ApplyChatTemplate(
-            template_str: null,
-            messages: prompt1,
-            tools: null,
-            add_generation_prompt: true);
-
-    var sequences = tokenizer.Encode(prompt1);
     var strb = new StringBuilder();
-    using GeneratorParams generatorParams = new GeneratorParams(model);
-    generatorParams.SetSearchOption("min_length", 1);
-    generatorParams.SetSearchOption("max_length", 300);
-    generatorParams.SetSearchOption("temperature", 0.0f);
-    generatorParams.SetSearchOption("top_p", 1.0f);
-    using var tokenizerStream = tokenizer.CreateStream();
-    using var generator = new Generator(model, generatorParams);
-    generator.AppendTokenSequences(sequences);
+    strb.Append("<|system|>You are a helpful assistant with some tools.<|tool|>[{\"\"name\"\": \"\"getcomputerdatetime\"\", \"\"description\"\": \"\"Gets the current date and time of this computer.\"\", \"\"parameters\"\": {}}]<|/tool|><|end|><|user|>What time is this computer?<|end|><|assistant|>");
+    OnnxRuntimeGenAIChatClientOptions1 options = new OnnxRuntimeGenAIChatClientOptions1
+    {
+        PromptFormatter = (chatmsgs, opt) =>
+        {
+            return strb.ToString();
+        }
+    };
+    var cc = new OnnxRuntimeGenAIChatClient1(fullpath, options);
+    ChatMessage systemMessage = new(ChatRole.System, "You are a helpful assistant with some tools.");
+    ChatMessage toolMessage = new(ChatRole.Tool, @"[{""name"": ""getcomputerdatetime"", ""description"": ""Gets the current date and time of this computer."", ""parameters"": {}}]");
+    ChatMessage userMessage = new(ChatRole.User, "What time is this computer?");
+    ChatMessage assistantMessage = new(ChatRole.Assistant, "");
+
+    ChatOptions chatOptions = new ChatOptions();
+    chatOptions.Temperature = 0.0f;
+    chatOptions.TopP = 1.0f;
+    chatOptions.MaxOutputTokens = 300;
+    //chatOptions.ResponseFormat = ChatResponseFormat.Json;
+
+    var strb_resp = new StringBuilder();
+    await foreach (var oo in cc.GetStreamingResponseAsync([systemMessage, toolMessage, userMessage, assistantMessage], chatOptions))
+    {
+        strb_resp.Append(oo);
+        Console.Write(oo);
+    }
+
+    System.Diagnostics.Trace.WriteLine(strb_resp.ToString());
+
+    ChatMessage toolMessageresult = new(ChatRole.Tool, $"{DateTime.Now}");
+    await foreach (var oo in cc.GetStreamingResponseAsync([systemMessage, toolMessage, userMessage, assistantMessage, toolMessageresult, assistantMessage], chatOptions))
+    {
+        Console.Write(oo);
+    }
+}
+
+//<| system |>
+//[系統指令：你是一個助理...]
+//<| tool |>
+//[JSON 格式的工具清單]
+//<|/ tool |>
+//<| end |>
+//<| user |>
+//[使用者的問題]
+//<| end |>
+//<| assistant |>
+void Orgg()
+{
+    var tools = @"[{""name"": ""getcomputerdatetime"", ""description"": ""Gets the current date and time of this computer."", ""parameters"": {}}]";
+    var prompt = @"<|system|>You are a helpful assistant with some tools.<|tool|>[{""name"": ""getcomputerdatetime"", ""description"": ""Gets the current date and time of this computer."", ""parameters"": {}}]<|/tool|><|end|><|user|>What time is this computer?<|end|><|assistant|>";
+    tools = @"[{""name"": ""getcomputertime"", ""description"": ""Gets the current time of this computer."", ""parameters"": {}},{""name"": ""getcomputerdate"", ""description"": ""Gets the current date of this computer."", ""parameters"": {}}]";
+
+    prompt = $@"<|system|>You are a helpful assistant with some tools.<|tool|>{tools}<|/tool|><|end|><|user|>What date and time is this computer?<|end|><|assistant|>";
+
     
-    var watch = System.Diagnostics.Stopwatch.StartNew();
+    fullpath = Path.GetFullPath(modelPath);
+    using Model model = new(fullpath);
+    using Tokenizer tokenizer = new(model);
 
-    Console.WriteLine("\nOutput:");
 
-    while (!generator.IsDone())
+
+    do
     {
-        try
+        var sequences = tokenizer.Encode(prompt);
+        var strb = new StringBuilder();
+        using GeneratorParams generatorParams = new GeneratorParams(model);
+        generatorParams.SetSearchOption("min_length", 1);
+        generatorParams.SetSearchOption("max_length", 300);
+        generatorParams.SetSearchOption("temperature", 0.0f);
+        generatorParams.SetSearchOption("top_p", 1.0f);
+        //generatorParams.SetGuidance("json_schema", "{}");
+
+        using var generator = new Generator(model, generatorParams);
+        generator.AppendTokenSequences(sequences);
+
+        var watch = System.Diagnostics.Stopwatch.StartNew();
+
+        Console.WriteLine("\nOutput:");
+        using var tokenizerStream = tokenizer.CreateStream();
+        while (!generator.IsDone())
         {
-            //generator.GenerateNextToken();
-            //var lastToken = generator.GetSequence(0)[^1];
-            //strb.Append(tokenizerStream.Decode(lastToken));
+            try
+            {
+                //generator.GenerateNextToken();
+                //var lastToken = generator.GetSequence(0)[^1];
+                //strb.Append(tokenizerStream.Decode(lastToken));
 
-            generator.GenerateNextToken();
-            string lastToken = tokenizerStream.Decode(GetLastToken(generator.GetSequence(0)));
+                generator.GenerateNextToken();
+                string lastToken = tokenizerStream.Decode(GetLastToken(generator.GetSequence(0)));
 
-            // workaround until C# 13 is adopted and ref locals are usable in async methods
-            static int GetLastToken(ReadOnlySpan<int> span) => span[span.Length - 1];
-
-
-            Console.Write(lastToken);
+                // workaround until C# 13 is adopted and ref locals are usable in async methods
+                static int GetLastToken(ReadOnlySpan<int> span) => span[span.Length - 1];
+                strb.Append(lastToken);
+                Console.Write(lastToken);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"\n[Error during generation]: {ex.Message}");
+                break;
+            }
         }
-        catch (Exception ex)
+
+        var match = Regex.Match(strb.ToString(), @"<\|tool_call\|>(?<json>.*?)<\|/tool_call\|>");
+
+        if (match.Success)
         {
-            Console.WriteLine($"\n[Error during generation]: {ex.Message}");
-            break;
+            string jsonContent = match.Groups["json"].Value;
+            Console.WriteLine("提取出的 JSON: " + jsonContent);
+
+            var toolCall = System.Text.Json.JsonSerializer.Deserialize<List<ToolCall>>(jsonContent);
+
+
         }
-    }
 
-    var match = Regex.Match(strb.ToString(), @"<\|tool_call\|>(?<json>.*?)<\|/tool_call\|>");
-
-    if (match.Success)
-    {
-        string jsonContent = match.Groups["json"].Value;
-        Console.WriteLine("提取出的 JSON: " + jsonContent);
-
-        var toolCall = System.Text.Json.JsonSerializer.Deserialize<List<ToolCall>>(jsonContent);
-
-
-    }
-
-    var prompt2 = $"{strb}<|end|><|tool_result|>{DateTime.Now}<|end|><|assistant|>";
-    var sequences2 = tokenizer.Encode(prompt2);
-    generator.AppendTokenSequences(sequences2);
-    while (!generator.IsDone())
-    {
-        try
+        var prompt2 = $"{strb}<|end|><|tool_result|>[{DateTime.Now.ToShortTimeString()}, {DateTime.Now.ToShortDateString()}]<|end|><|assistant|>";
+        var sequences2 = tokenizer.Encode(prompt2);
+        generator.AppendTokenSequences(sequences2);
+        while (!generator.IsDone())
         {
-            generator.GenerateNextToken();
-            var lastToken = generator.GetSequence(0)[^1];
-            strb.Append(tokenizerStream.Decode(lastToken));
-            Console.Write(tokenizerStream.Decode(lastToken));
+            try
+            {
+                generator.GenerateNextToken();
+                var lastToken = generator.GetSequence(0)[^1];
+                strb.Append(tokenizerStream.Decode(lastToken));
+                Console.Write(tokenizerStream.Decode(lastToken));
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"\n[Error during generation]: {ex.Message}");
+                break;
+            }
         }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"\n[Error during generation]: {ex.Message}");
-            break;
-        }
-    }
 
-    watch.Stop();
-    Console.WriteLine();
-    System.Diagnostics.Trace.WriteLine(DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff"));
-    // 顯示效能數據
-    var runTimeInSeconds = watch.Elapsed.TotalSeconds;
-    var totalTokens = generator.GetSequence(0).Length;
-    Console.WriteLine($"\n[Stats] Tokens: {totalTokens} | Time: {runTimeInSeconds:0.00}s | Speed: {totalTokens / runTimeInSeconds:0.00} tps");
+        watch.Stop();
+        Console.WriteLine();
+        System.Diagnostics.Trace.WriteLine(DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff"));
+        // 顯示效能數據
+        var runTimeInSeconds = watch.Elapsed.TotalSeconds;
+        var totalTokens = generator.GetSequence(0).Length;
+        Console.WriteLine($"\n[Stats] Tokens: {totalTokens} | Time: {runTimeInSeconds:0.00}s | Speed: {totalTokens / runTimeInSeconds:0.00} tps");
 
-} while (true);
+    } while (true);
+
+}
+
 
 
 public class ToolCall
