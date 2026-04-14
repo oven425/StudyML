@@ -1,5 +1,6 @@
 # StudyML
 ## Phi4 onnx file download link
+[ChartML](https://huggingface.co/microsoft/phi-4)
 
 [GPU link](https://huggingface.co/microsoft/phi-4-onnx/tree/main/gpu/gpu-int4-rtn-block-32)  
 [CPU link](https://huggingface.co/microsoft/phi-4-onnx/tree/main/cpu_and_mobile/cpu-int4-rtn-block-32-acc-level-4)

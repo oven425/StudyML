@@ -5,6 +5,7 @@ using System.Reflection;
 using System.Reflection.Emit;
 using System.Runtime.CompilerServices;
 using System.Text;
+using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
 
@@ -27,7 +28,10 @@ async Task onnxclient()
     {
         PromptFormatter = (chatmsgs, opt) =>
         {
-            return strb.ToString();
+            var tools = @"[{""name"": ""getcomputerdatetime"", ""description"": ""Gets the current date and time of this computer."", ""parameters"": {}}]";
+            var prompt = @"<|system|>You are a helpful assistant with some tools.<|tool|>[{""name"": ""getcomputerdatetime"", ""description"": ""Gets the current date and time of this computer."", ""parameters"": {}}]<|/tool|><|end|><|user|>What time is this computer?<|end|><|assistant|>";
+            tools = @"[{""name"": ""getcomputertime"", ""description"": ""Gets the current time of this computer."", ""parameters"": {}},{""name"": ""getcomputerdate"", ""description"": ""Gets the current date of this computer."", ""parameters"": {}}]";
+            return prompt;
         }
     };
     var cc = new OnnxRuntimeGenAIChatClient1(fullpath, options);
@@ -76,12 +80,22 @@ void Orgg()
 
     prompt = $@"<|system|>You are a helpful assistant with some tools.<|tool|>{tools}<|/tool|><|end|><|user|>What date and time is this computer?<|end|><|assistant|>";
 
-    
+    prompt = $@"<|im_start|>system
+You are a helpful assistant with some tools.
+Here are the available tools:
+<|tool|>
+[{{""name"": ""getcomputertime"", ""description"": ""Gets the current time of this computer."", ""parameters"": {{}}}},
+ {{""name"": ""getcomputerdate"", ""description"": ""Gets the current date of this computer."", ""parameters"": {{}}}}]
+<|/tool|>
+<|im_end|>
+<|im_start|>user
+What date and time is this computer?
+<|im_end|>
+<|im_start|>assistant";
+    prompt = prompt.Replace("\r\n", "");
     fullpath = Path.GetFullPath(modelPath);
     using Model model = new(fullpath);
     using Tokenizer tokenizer = new(model);
-
-
 
     do
     {
@@ -90,7 +104,7 @@ void Orgg()
         using GeneratorParams generatorParams = new GeneratorParams(model);
         generatorParams.SetSearchOption("min_length", 1);
         generatorParams.SetSearchOption("max_length", 300);
-        generatorParams.SetSearchOption("temperature", 0.0f);
+        generatorParams.SetSearchOption("temperature", 0.6f);
         generatorParams.SetSearchOption("top_p", 1.0f);
         //generatorParams.SetGuidance("json_schema", "{}");
 
@@ -99,7 +113,6 @@ void Orgg()
 
         var watch = System.Diagnostics.Stopwatch.StartNew();
 
-        Console.WriteLine("\nOutput:");
         using var tokenizerStream = tokenizer.CreateStream();
         while (!generator.IsDone())
         {
@@ -123,7 +136,7 @@ void Orgg()
                 break;
             }
         }
-
+        ParseFunctionCall(strb.ToString());
         var match = Regex.Match(strb.ToString(), @"<\|tool_call\|>(?<json>.*?)<\|/tool_call\|>");
 
         if (match.Success)
@@ -131,12 +144,14 @@ void Orgg()
             string jsonContent = match.Groups["json"].Value;
             Console.WriteLine("提取出的 JSON: " + jsonContent);
 
-            var toolCall = System.Text.Json.JsonSerializer.Deserialize<List<ToolCall>>(jsonContent);
+            //var toolCall = System.Text.Json.JsonSerializer.Deserialize<List<ToolCall>>(jsonContent);
 
 
         }
 
         var prompt2 = $"{strb}<|end|><|tool_result|>[{DateTime.Now.ToShortTimeString()}, {DateTime.Now.ToShortDateString()}]<|end|><|assistant|>";
+        prompt2 = $"{strb}<|end|><|tool_result|>[{DateTime.Now.ToShortDateString()}]<|end|><|assistant|>";
+
         var sequences2 = tokenizer.Encode(prompt2);
         generator.AppendTokenSequences(sequences2);
         while (!generator.IsDone())
@@ -167,12 +182,46 @@ void Orgg()
 
 }
 
-
-
-public class ToolCall
+void ParseFunctionCall(string jsonResponse)
 {
-    public string name { get; set; }
-    public object arguments { get; set; } // 若 arguments 結構固定，可換成具體類別
+    try
+    {
+        // 1. 反序列化成 List
+        var calls = JsonSerializer.Deserialize<List<FunctionCall>>(jsonResponse);
+
+        if (calls == null) return;
+
+        foreach (var call in calls)
+        {
+            Console.WriteLine($"執行函數: {call.Name}");
+
+            // 2. 根據函數名稱進行分流 (Dispatch)
+            if (call.Name == "getcomputerdate")
+            {
+                //ExecuteGetComputerDate();
+            }
+        }
+    }
+    catch (JsonException ex)
+    {
+        Console.WriteLine($"JSON 格式錯誤: {ex.Message}");
+    }
 }
 
 
+
+//public record FunctionCall(
+//    [property: JsonPropertyName("name")] string Name,
+//    [property: JsonPropertyName("description")] string Description
+//    //[property: JsonPropertyName("parameters")] JsonElement Parameters
+//);
+
+public class FunctionCall
+{
+    [JsonPropertyName("name")]
+    public string Name { get; set; }
+    [JsonPropertyName("description")]
+    public string Description { get; set; }
+    //[JsonPropertyName("parameters")]
+    //public JsonElement Parameters { get; set; }
+}
