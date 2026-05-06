@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "App_onnx (Package)": {
+      "commandName": "MsixPackage"
+    },
+    "App_onnx (Unpackaged)": {
+      "commandName": "Project"
+    }
+  }
+}

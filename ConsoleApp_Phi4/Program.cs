@@ -17,8 +17,135 @@ using Config config = new Config(modelPath);
 config.ClearProviders();
 ////config.AppendProvider("DML");
 ///
-Orgg();
+//Orgg();
 //await onnxclient();
+Skills();
+
+void Skills()
+{
+
+    var systemMessage = @"<|system|>
+# Role
+You are a highly efficient Local PC Assistant powered by Phi-4. Your goal is to help users manage and query their computer information.
+
+# Rules
+1. NEVER hallucinate an ""Observation"". You must wait for the user to provide it.
+2. Output only ONE ""Action"" tag at a time.
+3. Stop generating immediately after outputting the ""]"" character of an Action tag.
+
+# Toolset
+1. [CALL: GetSystemDate()] - For current date/weekday.
+2. [CALL: GetSystemTime()] - For current time.
+3. [CALL: GetBiosSerialNumber()] - For hardware serial number.
+4. [CALL: GetInstalledApps()] - For software lists.
+
+# Reasoning Protocol (ReAct)
+1. Thought: Analyze the user's request.
+2. Action: You can call MULTIPLE tools at once using a JSON array format if the user asks for multiple pieces of information. 
+   Format: [CALL: ToolA()], [CALL: ToolB()]
+3. Observation: Wait for the system to provide all results.
+4. Final Answer: Summarize all data in Traditional Chinese.
+
+# Language Constraint
+- Internal Thought and Actions: ALWAYS in English for logical consistency.
+- Final Answer: ALWAYS in Traditional Chinese (繁體中文) to be user-friendly.
+
+# Example
+User: ""現在幾點？""
+Thought: User wants to know the time. I should call the time tool.
+Action: [CALL: GetSystemTime()]
+(Stop generating)
+
+<|end|>";
+
+
+    // 2. 獲取用戶輸入
+    string userQuery = "幫我查一下這台電腦的日期和序號";
+
+    // 3. 組合完整的推論字串 (符合 Phi-4 的 Chat Template)
+    var prompt = $"{systemMessage}\n<|user|>\n{userQuery}\n<|assistant|>\n";
+    fullpath = Path.GetFullPath(modelPath);
+    using Model model = new(fullpath);
+    using Tokenizer tokenizer = new(model);
+
+    do
+    {
+        var sequences = tokenizer.Encode(prompt);
+        
+        var strb = new StringBuilder();
+        using GeneratorParams generatorParams = new GeneratorParams(model);
+        generatorParams.SetSearchOption("min_length", 1);
+        generatorParams.SetSearchOption("max_length", 1000);
+        generatorParams.SetSearchOption("temperature", 0.1f);
+        generatorParams.SetSearchOption("top_p", 0.8f);
+        generatorParams.SetSearchOption("top_k", 50);
+        
+        //generatorParams.SetGuidance("json_schema", "{}");
+
+        using var generator = new Generator(model, generatorParams);
+        generator.AppendTokenSequences(sequences);
+
+        var watch = System.Diagnostics.Stopwatch.StartNew();
+
+        using var tokenizerStream = tokenizer.CreateStream();
+        while (!generator.IsDone())
+        {
+            try
+            {
+                //generator.GenerateNextToken();
+                //var lastToken = generator.GetSequence(0)[^1];
+                //strb.Append(tokenizerStream.Decode(lastToken));
+
+                generator.GenerateNextToken();
+                string lastToken = tokenizerStream.Decode(GetLastToken(generator.GetSequence(0)));
+
+                // workaround until C# 13 is adopted and ref locals are usable in async methods
+                static int GetLastToken(ReadOnlySpan<int> span) => span[span.Length - 1];
+                strb.Append(lastToken);
+                Console.Write(lastToken);
+                System.Diagnostics.Trace.Write(lastToken);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"\n[Error during generation]: {ex.Message}");
+                break;
+            }
+        }
+        string serialNumber = "SN-XYZ-12345-ABC";
+        var date = DateTime.Now.ToShortDateString();
+        var Observation = $@"Observation: {{ ""GetSystemDate"": ""{date}"", ""GetBiosSerialNumber"": ""{serialNumber}"" }}";
+        var prompt2 = $"{strb}<|end|>{Observation}<|end|><|assistant|>";
+
+        var sequences2 = tokenizer.Encode(prompt2);
+        generator.AppendTokenSequences(sequences2);
+        while (!generator.IsDone())
+        {
+            try
+            {
+                generator.GenerateNextToken();
+                var lastToken = generator.GetSequence(0)[^1];
+                strb.Append(tokenizerStream.Decode(lastToken));
+                Console.Write(tokenizerStream.Decode(lastToken));
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"\n[Error during generation]: {ex.Message}");
+                break;
+            }
+        }
+
+        watch.Stop();
+        Console.WriteLine();
+        System.Diagnostics.Trace.WriteLine(DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff"));
+        // 顯示效能數據
+        var runTimeInSeconds = watch.Elapsed.TotalSeconds;
+        var totalTokens = generator.GetSequence(0).Length;
+        Console.WriteLine($"\n[Stats] Tokens: {totalTokens} | Time: {runTimeInSeconds:0.00}s | Speed: {totalTokens / runTimeInSeconds:0.00} tps");
+
+    } while (true);
+
+}
+
 
 async Task onnxclient()
 {
