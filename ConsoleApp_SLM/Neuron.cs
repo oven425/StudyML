@@ -1,67 +1,32 @@
-﻿using System.Text.Json;
-
-public class Neuron
+﻿public class Neuron
 {
-    public List<Value> Weights { get; set; } = new List<Value>();
+    public List<Value> Weights { get; set; } = new();
     public Value Bias { get; set; }
-    private static Random _rand = new Random();
 
-    public Neuron(int inputSize)
+    // nIn 代表這個神經元有幾個輸入口
+    public Neuron(int nIn)
     {
-        // 隨機初始化權重，這是 AI 學習的起點
-        for (int i = 0; i < inputSize; i++)
-            Weights.Add(new Value(_rand.NextDouble() * 2 - 1));
-        Bias = new Value(0);
+        var rand = new Random();
+        for (int i = 0; i < nIn; i++)
+            Weights.Add(new Value(rand.NextDouble() * 2 - 1)); // 隨機權重 -1 ~ 1
+        Bias = new Value(rand.NextDouble() * 2 - 1);         // 隨機偏差
     }
 
     public Value Forward(List<Value> x)
     {
-        // y = w1*x1 + w2*x2 + ... + b
+        // 運算：sum = (x[0]*w[0] + x[1]*w[1] + ...) + bias
         Value sum = Bias;
-        for (int i = 0; i < Weights.Count; i++)
+        for (int i = 0; i < x.Count; i++)
+        {
             sum = sum + (Weights[i] * x[i]);
-
-        return sum; // 為了簡單，我們先不加激發函數（如 Tanh 或 ReLU）
+        }
+        return sum; // 這裡可以選擇加上 .Sigmoid()
     }
 
-    public List<Value> Parameters()
+    public List<Value> Parameters() // 收集這顆神經元裡所有的參數
     {
         var p = new List<Value>(Weights);
         p.Add(Bias);
         return p;
     }
-
-    static public void SaveModel(Neuron neuron, string filePath)
-    {
-        // 只提取 Data，不需要存 Grad (梯度是訓練時才用的臨時變數)
-        var weights = neuron.Weights.Select(w => w.Data).ToList();
-        var modelData = new
-        {
-            Weights = weights,
-            Bias = neuron.Bias.Data
-        };
-
-        string json = JsonSerializer.Serialize(modelData);
-        File.WriteAllText(filePath, json);
-        Console.WriteLine("模型已存儲！");
-    }
-
-    static public void LoadModel(Neuron neuron, string filePath)
-    {
-        string json = File.ReadAllText(filePath);
-        var data = JsonSerializer.Deserialize<ModelSchema>(json);
-
-        for (int i = 0; i < neuron.Weights.Count; i++)
-        {
-            neuron.Weights[i].Data = data.Weights[i];
-        }
-        neuron.Bias.Data = data.Bias;
-        Console.WriteLine("模型載入成功，準備推理！");
-    }
-}
-
-public class ModelSchema
-{
-    public List<double> Weights { get; set; }
-    public double Bias { get; set; }
 }
