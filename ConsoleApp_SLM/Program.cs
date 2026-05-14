@@ -56,7 +56,7 @@ void TestMLP()
             foreach (var p in model.Parameters()) p.Grad = 0;
             loss.Backward();
 
-            // Update
+            // Update 
             foreach (var p in model.Parameters())
                 p.Data -= learningRate * p.Grad;
         }
@@ -64,7 +64,7 @@ void TestMLP()
         if (i % 200 == 0) Console.WriteLine($"Step {i}: Total Loss = {totalLoss:F4}");
     }
 
-    var res = model.Forward(new List<Value> { new Value(66.0), new Value(44.0) })[0];
+    var res = model.Forward(new List<Value> { new Value(55.0), new Value(44.0) })[0];
     Console.WriteLine($"測試 {a} + {b} = {res.Data:F2}");
 }
 
