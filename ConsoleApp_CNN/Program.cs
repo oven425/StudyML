@@ -3,6 +3,7 @@ using System.Buffers.Binary;
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.Runtime.InteropServices;
+using System.Security.Cryptography;
 
 //MINIST dataset
 //https://github.com/cvdfoundation/mnist
@@ -30,10 +31,69 @@ for (int i = 0; i < count; i++)
     {
         Directory.CreateDirectory(idx.ToString());
     }
+
     byte[] pixels = br_img.ReadBytes(rows * cols);
-    FastSaveBmp(pixels, rows, cols, $"{idx}/{labelCount[idx]}.bmp");
+    var imgg = new byte[28, 28];
+    //Buffer.BlockCopy(pixels, 0, imgg,0, pixels.Length);
+    for (int j = 0; j < pixels.Length; j = j + 28)
+    {
+        imgg[j / 28, j % 28] = pixels[j];
+    }
+    var filter = new byte[3, 3];
+    Filter(filter, imgg);
+    //FastSaveBmp(pixels, cols, rows, Path.Combine(idx.ToString(), $"{i}.bmp"));
+    //var img = NormalizeImage(pixels);
+
+    //DrawConsoleColor(img);
 
 }
+
+void Filter(byte[,] filter, byte[,] img, int width = 28, int height = 28)
+{
+    for (int y = 0; y < height-2; y++)
+    {
+        for (int x = 0; x < width-2; x++)
+        {
+            var a00 = img[x,y];
+            var a01 = img[x+1, y];
+            var a02 = img[x + 2, y];
+            var a10 = img[x, y+1];
+            var a11 = img[x+1, y + 1];
+            var a12 = img[x+2, y + 1];
+            var a20 = img[x, y + 2];
+            var a21 = img[x + 1, y + 2];
+            var a22 = img[x + 2, y + 2];
+
+        }
+    }
+}
+
+void DrawConsoleColor(double[,] image)
+{
+    for (int y = 0; y < 28; y++)
+    {
+        for (int x = 0; x < 28; x++)
+        {
+            int gray = (int)(image[x, y] * 255);
+            // 使用 ANSI 色彩代碼設定背景色 \x1b[48;2;R;G;Bm
+            Console.Write($"\x1b[48;2;{gray};{gray};{gray}m  \x1b[0m");
+        }
+        Console.WriteLine();
+    }
+}
+
+double[,] NormalizeImage(byte[] pixels, int width=28, int height=28)
+{
+    double[,] img = new double[width, height];
+    for (int i = 0; i < pixels.Length; i++)
+    {
+        img[i / width, i % width] = pixels[i] / 255.0;
+    }
+    return img;
+}
+
+
+
 
 
 void FastSaveBmp(byte[] pixels, int width, int height, string fileName)
