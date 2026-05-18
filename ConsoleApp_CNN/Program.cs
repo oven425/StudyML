@@ -27,43 +27,61 @@ for (int i = 0; i < count; i++)
     {
         labelCount[idx] = ++labelCount[idx];
     }
-    if(!Directory.Exists(idx.ToString()))
-    {
-        Directory.CreateDirectory(idx.ToString());
-    }
-
-    byte[] pixels = br_img.ReadBytes(rows * cols);
-    var imgg = new byte[28, 28];
-    //Buffer.BlockCopy(pixels, 0, imgg,0, pixels.Length);
-    for (int j = 0; j < pixels.Length; j = j + 28)
-    {
-        imgg[j / 28, j % 28] = pixels[j];
-    }
-    var filter = new byte[3, 3];
-    Filter(filter, imgg);
+    //if(!Directory.Exists(idx.ToString()))
+    //{
+    //    Directory.CreateDirectory(idx.ToString());
+    //}
     //FastSaveBmp(pixels, cols, rows, Path.Combine(idx.ToString(), $"{i}.bmp"));
-    //var img = NormalizeImage(pixels);
+    byte[] pixels = br_img.ReadBytes(rows * cols);
+    var filter = new double[,] 
+    {
+        { 1, 2, 1 }, 
+        { 2, 0, 2 }, 
+        { 1, 2, 1 } 
+    };
+    FastSaveBmp(pixels, cols, rows, "org.bmp");
+    Filter(filter, pixels, out var dst);
+    FastSaveBmp(dst, cols, rows, "filter.bmp");
 
     //DrawConsoleColor(img);
 
 }
 
-void Filter(byte[,] filter, byte[,] img, int width = 28, int height = 28)
+void Filter(double[,] filter, byte[] src, out byte[] dst, int width = 28, int height = 28)
 {
+    dst = new byte[src.Length];
+    int index = 0;
     for (int y = 0; y < height-2; y++)
     {
         for (int x = 0; x < width-2; x++)
         {
-            var a00 = img[x,y];
-            var a01 = img[x+1, y];
-            var a02 = img[x + 2, y];
-            var a10 = img[x, y+1];
-            var a11 = img[x+1, y + 1];
-            var a12 = img[x+2, y + 1];
-            var a20 = img[x, y + 2];
-            var a21 = img[x + 1, y + 2];
-            var a22 = img[x + 2, y + 2];
+            //var a00 = src[y*width+x]* filter[0,0];
+            //var a01 = src[y * width + x+1] * filter[1, 0];
+            //var a02 = src[y * width + x + 2] * filter[2, 0];
+            //var a10 = src[(y+1) * width + x] * filter[0, 1];
+            //var a11 = src[(y + 1) * width + x + 1] * filter[1, 1];
+            //var a12 = src[(y + 1) * width + x + 2] * filter[2, 1];
+            //var a20 = src[(y + 2) * width + x] * filter[0, 2];
+            //var a21 = src[(y + 2) * width + x+1] * filter[1, 2];
+            //var a22 = src[(y + 2) * width + x+2] * filter[2, 2];
 
+            //var sum = a00 + a01 + a02 + a10 + a11 + a12 + a20 + a21 + a22;
+            //sum/= 9;
+            //dst[index] = (byte)Math.Clamp(sum, 0,255);
+            //index++;
+
+            var sum = 0.0;
+            for(int fy = 0; fy < 3; fy++)
+            {
+                for(int fx = 0; fx < 3; fx++)
+                {
+                    sum = sum+ src[(y + fy) * width + x + fx] * filter[fx, fy];
+                    
+                }
+            }
+            sum = sum / filter.Length;
+            dst[index] += (byte)Math.Clamp(sum, 0, 255);
+            index++;
         }
     }
 }
@@ -98,9 +116,9 @@ double[,] NormalizeImage(byte[] pixels, int width=28, int height=28)
 
 void FastSaveBmp(byte[] pixels, int width, int height, string fileName)
 {
-    Bitmap bmp = new Bitmap(width, height, PixelFormat.Format24bppRgb);
+    using Bitmap bmp = new Bitmap(width, height, PixelFormat.Format24bppRgb);
     BitmapData data = bmp.LockBits(new Rectangle(0, 0, width, height), ImageLockMode.WriteOnly, PixelFormat.Format24bppRgb);
-
+    
     byte[] rgbValues = new byte[data.Stride * height];
     for (int i = 0; i < pixels.Length; i++)
     {
@@ -114,3 +132,22 @@ void FastSaveBmp(byte[] pixels, int width, int height, string fileName)
     bmp.UnlockBits(data);
     bmp.Save(fileName, ImageFormat.Bmp);
 }
+
+//void FastSaveBmp(byte[,] pixels, int width, int height, string fileName)
+//{
+//    Bitmap bmp = new Bitmap(width, height, PixelFormat.Format24bppRgb);
+//    BitmapData data = bmp.LockBits(new Rectangle(0, 0, width, height), ImageLockMode.WriteOnly, PixelFormat.Format24bppRgb);
+
+//    byte[] rgbValues = new byte[data.Stride * height];
+//    for (int i = 0; i < pixels.Length; i++)
+//    {
+//        // 每個像素填三次 (B, G, R)
+//        //rgbValues[i * 3] = pixels[i];     // Blue
+//        //rgbValues[i * 3 + 1] = pixels[i]; // Green
+//        //rgbValues[i * 3 + 2] = pixels[i]; // Red
+//    }
+
+//    Marshal.Copy(rgbValues, 0, data.Scan0, rgbValues.Length);
+//    bmp.UnlockBits(data);
+//    bmp.Save(fileName, ImageFormat.Bmp);
+//}
