@@ -14,21 +14,32 @@
     </Window.SystemBackdrop>
 
     <Grid>
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition/>
-        </Grid.RowDefinitions>
-        <Grid>
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition/>
-                <ColumnDefinition Width="Auto"/>
-            </Grid.ColumnDefinitions>
-            <TextBlock/>
-            <StackPanel Grid.Column="1" Orientation="Horizontal">
-                <Button>
-                    <PathIcon/>
+        <Grid Grid.Column="1">
+            <Grid.RowDefinitions>
+                <RowDefinition/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+            <ListBox ItemsSource="{x:Bind MainUI.Historys}">
+                <ListBox.ItemTemplate>
+                    <DataTemplate>
+                        <StackPanel>
+                            <TextBlock Text="{Binding Role}" FontWeight="Bold"/>
+                            <TextBlock Text="{Binding Text}" TextWrapping="Wrap"/>
+                        </StackPanel>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+            <Grid Grid.Row="1">
+                <Grid.RowDefinitions>
+                    <RowDefinition/>
+                    <RowDefinition/>
+                </Grid.RowDefinitions>
+                <TextBox TextWrapping="Wrap" AcceptsReturn="True" Text="{x:Bind MainUI.UserInputText, Mode=TwoWay}"/>
+                <Button x:Name="button_send" Click="button_send_Click" Grid.Row="1">
+                    <SymbolIcon Symbol="Send" />
                 </Button>
-            </StackPanel>
+            </Grid>
+            
         </Grid>
     </Grid>
 </Window>

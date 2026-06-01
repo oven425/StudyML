@@ -58,12 +58,17 @@ Action: [CALL: GetSystemTime()]
 
 <|end|>";
 
+    
 
     // 2. 獲取用戶輸入
     string userQuery = "幫我查一下這台電腦的日期和序號";
 
     // 3. 組合完整的推論字串 (符合 Phi-4 的 Chat Template)
     var prompt = $"{systemMessage}\n<|user|>\n{userQuery}\n<|assistant|>\n";
+
+    prompt = $"<|im_start|>system<|im_sep|>You are a bilingual chatbot.<|im_end|>" +
+                $"<|im_start|>user<|im_sep|>Hello<|im_end|>" +
+                $"<|im_start|>assistant<|im_sep|>";
     fullpath = Path.GetFullPath(modelPath);
     using Model model = new(fullpath);
     using Tokenizer tokenizer = new(model);

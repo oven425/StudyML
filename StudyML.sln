@@ -11,8 +11,6 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ConsoleApp_Phi4", "ConsoleA
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SemanticKernel_Skills", "SemanticKernel_Skills\SemanticKernel_Skills.csproj", "{109B3981-9D90-4B53-A855-CC60D03FEEC9}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ConsoleApp_Gemma4", "ConsoleApp_Gemma4\ConsoleApp_Gemma4.csproj", "{C532D2BF-EC24-48A4-9401-880FC176BAB1}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "App_onnx", "App_onnx\App_onnx.csproj", "{FFF47937-0F9E-4541-80BC-157B8D594B56}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ConsoleApp_SLM", "ConsoleApp_SLM\ConsoleApp_SLM.csproj", "{4735E79F-BC9B-4B9E-B9C0-AC212E78AB17}"
@@ -41,10 +39,6 @@ Global
 		{109B3981-9D90-4B53-A855-CC60D03FEEC9}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{109B3981-9D90-4B53-A855-CC60D03FEEC9}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{109B3981-9D90-4B53-A855-CC60D03FEEC9}.Release|Any CPU.Build.0 = Release|Any CPU
-		{C532D2BF-EC24-48A4-9401-880FC176BAB1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{C532D2BF-EC24-48A4-9401-880FC176BAB1}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{C532D2BF-EC24-48A4-9401-880FC176BAB1}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{C532D2BF-EC24-48A4-9401-880FC176BAB1}.Release|Any CPU.Build.0 = Release|Any CPU
 		{FFF47937-0F9E-4541-80BC-157B8D594B56}.Debug|Any CPU.ActiveCfg = Debug|x64
 		{FFF47937-0F9E-4541-80BC-157B8D594B56}.Debug|Any CPU.Build.0 = Debug|x64
 		{FFF47937-0F9E-4541-80BC-157B8D594B56}.Debug|Any CPU.Deploy.0 = Debug|x64
