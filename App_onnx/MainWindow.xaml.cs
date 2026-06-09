@@ -16,6 +16,7 @@ using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices.WindowsRuntime;
 using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
 using Windows.Foundation;
 using Windows.Foundation.Collections;
@@ -35,57 +36,11 @@ namespace App_onnx
         {
             InitializeComponent();
             
-            //string modelPath = @"..\..\..\..\onnx_phi4\CPU";
-            //modelPath = "..\\..\\..\\..\\..\\..\\onnx_phi4\\CPU-Phi-4-mini-instruct-onnx";
-            //var fullpath = Path.GetFullPath(modelPath);
-            //using Model model = new(fullpath);
-            //using Tokenizer tokenizer = new(model);
-            //var tools = @"[{""name"": ""getcomputerdatetime"", ""description"": ""Gets the current date and time of this computer."", ""parameters"": {}}]";
-            //var prompt = @"<|system|>You are a helpful assistant with some tools.<|tool|>[{""name"": ""getcomputerdatetime"", ""description"": ""Gets the current date and time of this computer."", ""parameters"": {}}]<|/tool|><|end|><|user|>What time is this computer?<|end|><|assistant|>";
-            //tools = @"[{""name"": ""getcomputertime"", ""description"": ""Gets the current time of this computer."", ""parameters"": {}},{""name"": ""getcomputerdate"", ""description"": ""Gets the current date of this computer."", ""parameters"": {}}]";
 
-            //prompt = $@"<|system|>You are a helpful assistant with some tools.<|tool|>{tools}<|/tool|><|end|><|user|>What date and time is this computer?<|end|><|assistant|>";
-
-            //var sequences = tokenizer.Encode(prompt);
-            //var strb = new StringBuilder();
-            //using GeneratorParams generatorParams = new GeneratorParams(model);
-            //generatorParams.SetSearchOption("min_length", 1);
-            //generatorParams.SetSearchOption("max_length", 300);
-            //generatorParams.SetSearchOption("temperature", 0.6f);
-            //generatorParams.SetSearchOption("top_p", 1.0f);
-            ////generatorParams.SetGuidance("json_schema", "{}");
-
-            //using var generator = new Generator(model, generatorParams);
-            //generator.AppendTokenSequences(sequences);
-
-            //var watch = System.Diagnostics.Stopwatch.StartNew();
-
-            //using var tokenizerStream = tokenizer.CreateStream();
-            //while (!generator.IsDone())
-            //{
-            //    try
-            //    {
-            //        //generator.GenerateNextToken();
-            //        //var lastToken = generator.GetSequence(0)[^1];
-            //        //strb.Append(tokenizerStream.Decode(lastToken));
-
-            //        generator.GenerateNextToken();
-            //        string lastToken = tokenizerStream.Decode(GetLastToken(generator.GetSequence(0)));
-
-            //        // workaround until C# 13 is adopted and ref locals are usable in async methods
-            //        static int GetLastToken(ReadOnlySpan<int> span) => span[span.Length - 1];
-            //        strb.Append(lastToken);
-            //        Console.Write(lastToken);
-            //    }
-            //    catch (Exception ex)
-            //    {
-            //        Console.WriteLine($"\n[Error during generation]: {ex.Message}");
-            //        break;
-            //    }
-            //}
         }
 
-        string modelPath = "..\\..\\..\\..\\..\\..\\onnx_phi4\\CPU-Phi-4-mini-instruct-onnx";
+        //string modelPath = "..\\..\\..\\..\\..\\..\\onnx_phi4\\CPU-Phi-4-mini-instruct-onnx";
+        string modelPath = "..\\..\\..\\..\\..\\..\\onnx_qwen";
         Model? m_Model;
         Tokenizer? m_Tokenizer;
         GeneratorParams? m_GeneratorParams;
@@ -141,7 +96,32 @@ namespace App_onnx
                     m_Tokenizer = new(m_Model);
                     m_GeneratorParams = new GeneratorParams(m_Model);
                 }
+                // 1. 設定對話內容（支援 role: system, user, assistant）
+                var messages = new List<Dictionary<string, string>>
+{
+    new Dictionary<string, string> { { "role", "system" }, { "content", "your ai" } },
+    new Dictionary<string, string> { { "role", "user" }, { "content", "how to use c#" } }
+};
 
+                // 2. 將訊息序列化為 JSON 字串
+                string messagesJson = JsonSerializer.Serialize(messages);
+
+                var toolsList = new[] {
+    new {
+        type = "function",
+        function = new {
+            name = "get_current_weather",
+            description = "獲取指定位置的天氣",
+            parameters = new { /*...*/ } // JSON Schema 格式
+        }
+    }
+};
+                string toolsJson = JsonSerializer.Serialize(toolsList);
+
+                // 3. 載入 Tokenizer 並套用模板 (使用預設模型模板則第一個參數傳入空字串 "")
+
+                // 產出符合模型規格的 Prompt 字串（addGenerationPrompt 設為 true 加上 assistant 起始標記）
+                string prompt = m_Tokenizer.ApplyChatTemplate("", messagesJson, toolsJson, true);
 
                 var sequences = m_Tokenizer.Encode(prompt);
 
