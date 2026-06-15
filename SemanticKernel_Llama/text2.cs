@@ -74,7 +74,6 @@ namespace SemanticKernel_Llama
             string userQuestion = "幫我看看本地的./a.txt和./b.txt裡面寫了什麼？";
             //userQuestion = "幫我看看本地的a.txt和b.txt有什麼不同？";
             //userQuestion = "什麼是c#?";
-
             // 依照 Gemma 4 格式組裝輸入
             string fullPrompt = $"{systemPrompt}<|turn>user\n{userQuestion}<turn|>\n<|turn>model\n";
 
@@ -83,12 +82,17 @@ namespace SemanticKernel_Llama
 
             var inferenceParams = new InferenceParams()
             {
-                MaxTokens = 512,
+                MaxTokens = 8192,
                 AntiPrompts = new[] { "<turn|>" }
             };
             string modelOutput = "";
-
-            await foreach (var token in executor.InferAsync(fullPrompt, inferenceParams))
+            await foreach (var token in executor.InferAsync($"{systemPrompt}\n<|turn>user\n", inferenceParams))
+            {
+                modelOutput += token;
+                Console.Write(token);
+                System.Diagnostics.Trace.Write(token);
+            }
+            await foreach (var token in executor.InferAsync($"{userQuestion}<turn|>\n<|turn>model\n", inferenceParams))
             {
                 modelOutput += token;
                 Console.Write(token);
@@ -96,15 +100,14 @@ namespace SemanticKernel_Llama
             }
 
 
-            bool inThought = false;
 
             // 串流接收 Token
-            await foreach (var token in session.ChatAsync(new ChatHistory.Message(AuthorRole.User, fullPrompt), inferenceParams))
-            {
-                modelOutput += token;
-                Console.Write(token);
-                System.Diagnostics.Trace.Write(token);
-            }
+            //await foreach (var token in session.ChatAsync(new ChatHistory.Message(AuthorRole.User, fullPrompt), inferenceParams))
+            //{
+            //    modelOutput += token;
+            //    Console.Write(token);
+            //    System.Diagnostics.Trace.Write(token);
+            //}
             string thoughtPattern = @"<\|channel>(.*?)(?=<channel\|>)";
             Match thoughtMatch = Regex.Match(modelOutput, thoughtPattern, RegexOptions.Singleline);
 
@@ -133,23 +136,35 @@ namespace SemanticKernel_Llama
             //fullPrompt = fullPrompt + "<|tool_response>response:read_file{content:<|\"|>abcdef<|\"|>}<tool_response|><|tool_response>response:read_file{content:<|\"|>apple is red<|\"|>}<tool_response|><|turn>model\n";
             fullPrompt = fullPrompt + string.Join("", toolresps);
             modelOutput = "";
-            await foreach (var token in session.ChatAsync(new ChatHistory.Message(AuthorRole.User, fullPrompt), inferenceParams))
+            //await foreach (var token in session.ChatAsync(new ChatHistory.Message(AuthorRole.User, fullPrompt), inferenceParams))
+            //{
+            //    modelOutput += token;
+            //    Console.Write(token);
+            //    System.Diagnostics.Trace.Write(token);
+            //}
+            await foreach (var token in executor.InferAsync($"{string.Join("", toolresps)}", inferenceParams))
             {
                 modelOutput += token;
                 Console.Write(token);
                 System.Diagnostics.Trace.Write(token);
             }
-            fullPrompt = fullPrompt + modelOutput + "<turn|>";
+            //fullPrompt = fullPrompt + modelOutput + "<turn|>";
             userQuestion = "比對a.tx和b.txt的內容有什麼不同";
-            fullPrompt = fullPrompt + $"<|turn>user\n{userQuestion}<turn|>\n<|turn>model\n";
-            await foreach (var token in session.ChatAsync(new ChatHistory.Message(AuthorRole.User, fullPrompt), inferenceParams))
+            //fullPrompt = fullPrompt + $"<|turn>user\n{userQuestion}<turn|>\n<|turn>model\n";
+            //await foreach (var token in session.ChatAsync(new ChatHistory.Message(AuthorRole.User, fullPrompt), inferenceParams))
+            //{
+            //    modelOutput += token;
+            //    Console.Write(token);
+            //    System.Diagnostics.Trace.Write(token);
+            //}
+
+            await foreach (var token in executor.InferAsync($"<|turn>user\n{userQuestion}<turn|>\n<|turn>model\n", inferenceParams))
             {
                 modelOutput += token;
                 Console.Write(token);
                 System.Diagnostics.Trace.Write(token);
             }
             Console.WriteLine("\n\n[對話結束]");
-            Console.ReadLine();
         }
 
         string ReadLocalFile(string filePath)

@@ -17,6 +17,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ConsoleApp_CNN", "ConsoleAp
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SemanticKernel_Llama", "SemanticKernel_Llama\SemanticKernel_Llama.csproj", "{A10BF70A-0D20-4DC5-A913-C68B26E6967F}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "App_gguf", "App_gguf\App_gguf.csproj", "{C2AECDB0-51DC-4BD0-9FCA-4AC133DFF6E3}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -53,6 +55,12 @@ Global
 		{A10BF70A-0D20-4DC5-A913-C68B26E6967F}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{A10BF70A-0D20-4DC5-A913-C68B26E6967F}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{A10BF70A-0D20-4DC5-A913-C68B26E6967F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C2AECDB0-51DC-4BD0-9FCA-4AC133DFF6E3}.Debug|Any CPU.ActiveCfg = Debug|x64
+		{C2AECDB0-51DC-4BD0-9FCA-4AC133DFF6E3}.Debug|Any CPU.Build.0 = Debug|x64
+		{C2AECDB0-51DC-4BD0-9FCA-4AC133DFF6E3}.Debug|Any CPU.Deploy.0 = Debug|x64
+		{C2AECDB0-51DC-4BD0-9FCA-4AC133DFF6E3}.Release|Any CPU.ActiveCfg = Release|x64
+		{C2AECDB0-51DC-4BD0-9FCA-4AC133DFF6E3}.Release|Any CPU.Build.0 = Release|x64
+		{C2AECDB0-51DC-4BD0-9FCA-4AC133DFF6E3}.Release|Any CPU.Deploy.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

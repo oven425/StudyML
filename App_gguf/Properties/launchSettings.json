@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "App_gguf (Package)": {
+      "commandName": "MsixPackage"
+    },
+    "App_gguf (Unpackaged)": {
+      "commandName": "Project"
+    }
+  }
+}
