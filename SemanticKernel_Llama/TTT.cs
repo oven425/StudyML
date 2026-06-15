@@ -1,5 +1,6 @@
 ﻿using LLama;
 using LLama.Common;
+using LLama.Sampling;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -92,7 +93,13 @@ namespace SemanticKernel_Llama
             var inferenceParams = new InferenceParams()
             {
                 MaxTokens = 512,
-                AntiPrompts = ["<turn|>"]
+                AntiPrompts = ["<turn|>"],
+                SamplingPipeline = new DefaultSamplingPipeline()
+                {
+                    TopK = 0,
+                    TopP = 1,
+                    Temperature = 0.2F
+                }
             };
             Console.Write("init system....");
             await foreach (var token in executor.InferAsync($"{systemPrompt}\n", inferenceParams))
