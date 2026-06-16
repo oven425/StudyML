@@ -43,7 +43,8 @@ namespace SemanticKernel_Llama
             // 3. 根據 Gemma 4 規範建構 System Prompt (宣告工具與啟用思考)
             var systemPrompt = """
         <|turn>system
-        You are a helpful assistant.<|tool>declaration:read_file{
+        You are a helpful assistant.
+        <|tool>declaration:read_file{
           description: <|"|>讀取本機電腦中指定路徑的文字或數據檔案內容。<|"|>,
           parameters: {
             type: <|"|>object<|"|>,
@@ -55,7 +56,8 @@ namespace SemanticKernel_Llama
             },
             required: [<|"|>file_path<|"|>]
           }
-        }<tool|><|tool>declaration:list_directory{
+        }<tool|>
+        <|tool>declaration:list_directory{
           description: <|"|>列出指定資料夾中的所有檔案與目錄。<|"|>,
           parameters: {
             type: <<|"|>object<|"|>,
@@ -82,7 +84,7 @@ namespace SemanticKernel_Llama
 
             var inferenceParams = new InferenceParams()
             {
-                MaxTokens = 8192,
+                MaxTokens = 81920,
                 AntiPrompts = new[] { "<turn|>" }
             };
             string modelOutput = "";
@@ -100,14 +102,6 @@ namespace SemanticKernel_Llama
             }
 
 
-
-            // 串流接收 Token
-            //await foreach (var token in session.ChatAsync(new ChatHistory.Message(AuthorRole.User, fullPrompt), inferenceParams))
-            //{
-            //    modelOutput += token;
-            //    Console.Write(token);
-            //    System.Diagnostics.Trace.Write(token);
-            //}
             string thoughtPattern = @"<\|channel>(.*?)(?=<channel\|>)";
             Match thoughtMatch = Regex.Match(modelOutput, thoughtPattern, RegexOptions.Singleline);
 
@@ -136,27 +130,18 @@ namespace SemanticKernel_Llama
             //fullPrompt = fullPrompt + "<|tool_response>response:read_file{content:<|\"|>abcdef<|\"|>}<tool_response|><|tool_response>response:read_file{content:<|\"|>apple is red<|\"|>}<tool_response|><|turn>model\n";
             fullPrompt = fullPrompt + string.Join("", toolresps);
             modelOutput = "";
-            //await foreach (var token in session.ChatAsync(new ChatHistory.Message(AuthorRole.User, fullPrompt), inferenceParams))
-            //{
-            //    modelOutput += token;
-            //    Console.Write(token);
-            //    System.Diagnostics.Trace.Write(token);
-            //}
+
+
             await foreach (var token in executor.InferAsync($"{string.Join("", toolresps)}", inferenceParams))
             {
                 modelOutput += token;
                 Console.Write(token);
                 System.Diagnostics.Trace.Write(token);
             }
-            //fullPrompt = fullPrompt + modelOutput + "<turn|>";
+
             userQuestion = "比對a.tx和b.txt的內容有什麼不同";
-            //fullPrompt = fullPrompt + $"<|turn>user\n{userQuestion}<turn|>\n<|turn>model\n";
-            //await foreach (var token in session.ChatAsync(new ChatHistory.Message(AuthorRole.User, fullPrompt), inferenceParams))
-            //{
-            //    modelOutput += token;
-            //    Console.Write(token);
-            //    System.Diagnostics.Trace.Write(token);
-            //}
+
+
 
             await foreach (var token in executor.InferAsync($"<|turn>user\n{userQuestion}<turn|>\n<|turn>model\n", inferenceParams))
             {

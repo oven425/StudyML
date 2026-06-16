@@ -9,11 +9,11 @@
   IgnorableNamespaces="uap rescap systemai">
 
   <Identity
-    Name="5942d51c-1b06-467f-97be-862ef51a8f45"
+    Name="edaf4752-bbf2-4b03-bf39-1e4e783fd956"
     Publisher="CN=oven4"
     Version="1.0.0.0" />
 
-  <mp:PhoneIdentity PhoneProductId="5942d51c-1b06-467f-97be-862ef51a8f45" PhonePublisherId="00000000-0000-0000-0000-000000000000"/>
+  <mp:PhoneIdentity PhoneProductId="edaf4752-bbf2-4b03-bf39-1e4e783fd956" PhonePublisherId="00000000-0000-0000-0000-000000000000"/>
 
   <Properties>
     <DisplayName>App_gguf</DisplayName>
