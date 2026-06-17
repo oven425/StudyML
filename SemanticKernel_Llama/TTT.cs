@@ -18,14 +18,15 @@ namespace SemanticKernel_Llama
             Console.OutputEncoding = Encoding.UTF8;
             Console.InputEncoding = Encoding.UTF8;
 
-            string modelPath = @"..\..\..\..\gguf_gemma4\gemma-4-E2B-it-Q4_K_M.gguf"; // change it to your own model path.
+            var modelPath = @"..\..\..\..\gguf_gemma4\gemma-4-E2B-it-Q4_K_M.gguf";
+            //modelPath = @"..\..\..\..\gguf_gemma4\gemma-4-E4B-it-Q4_K_M.gguf";
             var parameters = new ModelParams(modelPath)
             {
-                ContextSize = 819200,
+                ContextSize = 8192,
                 GpuLayerCount = 20,
             };
 
-            using var model = LLamaWeights.LoadFromFile(parameters);
+            using var model = await LLamaWeights.LoadFromFileAsync(parameters);
 
 
             using var context = model.CreateContext(parameters);
@@ -52,21 +53,21 @@ namespace SemanticKernel_Llama
 
         3. **判斷最新局勢（檢查 AI 是否獲勝）：**
            - AI 下完 `O` 之後，立即檢查新的棋盤狀態：
+             _ **無論AI是否勝利或平手:**,呼叫 `ttt_out` 輸出最新的棋盤狀態。
              - **若 AI 勝利或平手：** 呼叫 `ttt_state` 輸出最後結果。
              - **若仍未分出勝負：** 呼叫 `ttt_out` 輸出最新的棋盤狀態，等待玩家下下一手。
-        4. 當你收到 `<|tool_response>` 時，代表後端系統已經讓玩家（X）下完棋，並且該 response 中的 `data` 字串就是玩家下完後的「最新棋盤狀態」。你必須「立刻重新執行步驟 1」，分析這個新字串，並決定你的下一步，絕對不能停止發言。
 
         ### 輸出規則
         1. 回傳棋盤狀態要使用ttt_out
         2. 若偵測到分出勝負,要使用ttt_state
         <|tool>declaration:ttt_out{
-          description: <|"|>AI計算後的棋盤狀態，必須是一個包含九個字符的字串，用 `O`、`X` 和 `_` (空格) 來表示棋盤上的狀態，例如 `OOOXX_XXX`<|"|>,
+          description: <|"|>AI計算後的棋盤狀態，必須是一個九個字符的字串，用 `O`、`X` 和 `_` (空格) 來表示棋盤上的狀態，例如 `OOOXX_XXX`<|"|>,
           parameters: {
             type: <|"|>object<|"|>,
             properties: {
               data: {
                 type: <|"|>string<|"|>,
-                description: <|"|>AI計算後的棋盤狀態，必須是一個包含九個字符的字串，用 `O`、`X` 和 `_` (空格) 來表示棋盤上的狀態，例如 `OOOXX_XXX`<|"|>
+                description: <|"|>AI計算後的棋盤狀態，必須是一個九個字符的字串，用 `O`、`X` 和 `_` (空格) 來表示棋盤上的狀態，例如 `OOOXX_XXX`<|"|>
               }
             },
             required: [<|"|>data<|"|>]
@@ -139,6 +140,8 @@ namespace SemanticKernel_Llama
                 char[] chars = readFileArgs.data.ToCharArray();
                 chars[pos] = 'X';
                 ttt = new string(chars);
+                System.Diagnostics.Trace.WriteLine("player->");
+                PrintJson(ttt);
 
                 resp = "";
                 var toolresp = $"<|tool_response>response:ttt_out{{}}<tool_response|>";

@@ -16,8 +16,8 @@ namespace SemanticKernel_Llama
             Console.OutputEncoding = Encoding.UTF8;
             Console.InputEncoding = Encoding.UTF8;
 
-            string modelPath = @"..\..\..\..\gguf_gemma4\gemma-4-E2B-it-Q4_K_M.gguf"; // change it to your own model path.
-            string mmprojPath = @"..\..\..\..\gguf_gemma4\mmproj-gemma-4-E2B-it-Q8_0.gguf"; // change it to your own mmproj path.
+            string modelPath = @"..\..\..\..\gguf_gemma4\gemma-4-E2B-it-Q4_K_M.gguf";
+            string mmprojPath = @"..\..\..\..\gguf_gemma4\mmproj-gemma-4-E2B-it-Q8_0.gguf";
             var parameters = new ModelParams(modelPath)
             {
                 ContextSize = 8192,
@@ -35,12 +35,13 @@ namespace SemanticKernel_Llama
 
             var executor = new InteractiveExecutor(context, visionWeights);
 
-            using var jpg = visionWeights.LoadMedia("a.jpg");
+            using var jpg_a = visionWeights.LoadMedia("a.jpg");
+            using var jpg_dog = visionWeights.LoadMedia("text.jpg");
 
             //<|think|>
             string systemPrompt = "<|turn>system\n<turn|>\n";
             string promptBeforeImage = $"{systemPrompt}<|turn>user\n"; // 圖片前的文字
-            string promptAfterImage = "Describe this image: <|image|>\n<|turn>model\n"; // 圖片後的文字與指令
+            string promptAfterImage = "用中文描述這兩張圖片: <|image|><|image|>\n<|turn>model\n"; // 圖片後的文字與指令
 
             Console.WriteLine("🤖 Gemma 4 正在處理中...\n");
 
@@ -49,7 +50,8 @@ namespace SemanticKernel_Llama
                 MaxTokens = 2048,
                 AntiPrompts = new[] { "<turn|>" }
             };
-            executor.Embeds.Add(jpg);
+            executor.Embeds.Add(jpg_a);
+            executor.Embeds.Add(jpg_dog);
             await foreach (var token in executor.InferAsync(promptBeforeImage, inferenceParams))
             {
             }

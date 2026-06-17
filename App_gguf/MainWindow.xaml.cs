@@ -27,5 +27,7 @@ namespace App_gguf
         {
             InitializeComponent();
         }
+
+        public MainUI LLamaCpp { get; set; } = new MainUI();
     }
 }

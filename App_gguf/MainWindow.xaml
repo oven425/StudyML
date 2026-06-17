@@ -14,6 +14,19 @@
     </Window.SystemBackdrop>
 
     <Grid>
-
+        <Grid.RowDefinitions>
+            <RowDefinition/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+        <Grid Grid.Row="1">
+            <Grid.RowDefinitions>
+                <RowDefinition/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+            <TextBox Text="{x:Bind LLamaCpp.User}" PlaceholderText="詢問 Copilot" MinHeight="100" AcceptsReturn="True"/>
+            <Button x:Name="button_send" Command="{x:Bind LLamaCpp.SendCommand}" Grid.Row="1" HorizontalAlignment="Right">
+                <SymbolIcon Symbol="Send" />
+            </Button>
+        </Grid>
     </Grid>
 </Window>
