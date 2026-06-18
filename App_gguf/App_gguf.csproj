@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
@@ -42,7 +42,7 @@
     <PackageReference Include="LLamaSharp" Version="0.27.0" />
     <PackageReference Include="LLamaSharp.Backend.Cpu" Version="0.27.0" />
     <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.28000.1839" />
-    <PackageReference Include="Microsoft.WindowsAppSDK" Version="2.2.0" />
+    <PackageReference Include="Microsoft.WindowsAppSDK" Version="2.1.3" />
   </ItemGroup>
 
   <!--
@@ -61,4 +61,25 @@
     <PublishTrimmed Condition="'$(Configuration)' == 'Debug'">False</PublishTrimmed>
     <PublishTrimmed Condition="'$(Configuration)' != 'Debug'">True</PublishTrimmed>
   </PropertyGroup>
+
+  <!--
+    Fix: LLamaSharp native runtime libraries (runtimes\...) are included in
+    filtered.layout.resfiles by ContentFilesProjectOutputGroup. Their paths contain
+    double backslashes which makepri.exe (SDK 10.0.28000.x) converts to invalid '//'
+    URI segments, causing PRI175: 0x80070057 (E_INVALIDARG).
+    This target removes native library entries before makepri.exe runs.
+  -->
+  <Target Name="_FilterNativeLibsFromLayoutResfiles" BeforeTargets="_GenerateProjectPriFileCore">
+    <PropertyGroup>
+      <_LayoutResFilesPath>$(IntermediateOutputPath)filtered.layout.resfiles</_LayoutResFilesPath>
+    </PropertyGroup>
+    <ReadLinesFromFile File="$(_LayoutResFilesPath)" Condition="Exists('$(_LayoutResFilesPath)')">
+      <Output TaskParameter="Lines" ItemName="_AllLayoutResLines" />
+    </ReadLinesFromFile>
+    <ItemGroup>
+      <_FilteredLayoutResLines Include="@(_AllLayoutResLines)" Condition="!$([System.String]::Copy('%(Identity)').StartsWith('runtimes'))" />
+    </ItemGroup>
+    <WriteLinesToFile File="$(_LayoutResFilesPath)" Lines="@(_FilteredLayoutResLines)" Overwrite="true" Condition="Exists('$(_LayoutResFilesPath)')" />
+  </Target>
+
 </Project>
