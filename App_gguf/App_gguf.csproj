@@ -39,6 +39,8 @@
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
+    <PackageReference Include="LLamaSharp" Version="0.27.0" />
+    <PackageReference Include="LLamaSharp.Backend.Cpu" Version="0.27.0" />
     <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.28000.1839" />
     <PackageReference Include="Microsoft.WindowsAppSDK" Version="2.2.0" />
   </ItemGroup>

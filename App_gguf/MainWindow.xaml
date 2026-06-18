@@ -23,6 +23,13 @@
                 <RowDefinition/>
                 <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
+            <ListBox ItemsSource="{x:Bind LLamaCpp.Historys}">
+                <ListBox.ItemTemplate>
+                    <DataTemplate x:DataType="local:History">
+                        <TextBlock Text="{x:Bind Message}"/>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
             <TextBox Text="{x:Bind LLamaCpp.User}" PlaceholderText="詢問 Copilot" MinHeight="100" AcceptsReturn="True"/>
             <Button x:Name="button_send" Command="{x:Bind LLamaCpp.SendCommand}" Grid.Row="1" HorizontalAlignment="Right">
                 <SymbolIcon Symbol="Send" />

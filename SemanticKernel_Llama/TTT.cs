@@ -49,7 +49,7 @@ namespace SemanticKernel_Llama
            - 檢查玩家傳入的棋盤。若玩家（X）已經連成一線，或棋盤已滿（平手），請直接呼叫 `ttt_state` 結束遊戲。
 
         2. **AI 進行下棋動作：**
-           - 若遊戲未結束，AI 必須從棋盤中的空格（`_`）挑選一個位置填入 `O`。
+           - 若遊戲未結束，AI 必須井子棋規,從棋盤中的空格（`_`）挑選一個位置填入 `O`。
 
         3. **判斷最新局勢（檢查 AI 是否獲勝）：**
            - AI 下完 `O` 之後，立即檢查新的棋盤狀態：
@@ -58,7 +58,7 @@ namespace SemanticKernel_Llama
              - **若仍未分出勝負：** 呼叫 `ttt_out` 輸出最新的棋盤狀態，等待玩家下下一手。
 
         ### 輸出規則
-        1. 回傳棋盤狀態要使用ttt_out
+        1. 回傳棋盤狀態要使用ttt_out,棋盤狀態一定是9個字符的字串
         2. 若偵測到分出勝負,要使用ttt_state
         <|tool>declaration:ttt_out{
           description: <|"|>AI計算後的棋盤狀態，必須是一個九個字符的字串，用 `O`、`X` 和 `_` (空格) 來表示棋盤上的狀態，例如 `OOOXX_XXX`<|"|>,
@@ -110,7 +110,7 @@ namespace SemanticKernel_Llama
             }
             Console.WriteLine("complete");
             string resp = "";
-            string ttt = "_________";
+            string ttt = "X_O_O_X__";
             var userQuestion = $"""
                 <|turn>user
                 這是目前的棋盤狀態{ttt},之後會透過ttt_out回傳更新後的棋盤狀態
@@ -128,20 +128,40 @@ namespace SemanticKernel_Llama
             {
                 Console.WriteLine("");
                 Console.WriteLine("print AI");
-                var (action, args) = ProcessCommand(resp);
+                try
+                {
+                    var (action, args) = ProcessCommand(resp);
+                    switch(action)
+                    {
+                        case "ttt_out":
+                            {
+                                var readFileArgs = JsonSerializer.Deserialize<TttData>(args);
+                                PrintJson(readFileArgs.data);
+                                Console.Write("輸入要下的位置0-8:");
+                                var userInput = Console.ReadLine();
+                                if (userInput == null) return;
+                                if (!int.TryParse(userInput, out var pos)) return;
 
-                var readFileArgs = JsonSerializer.Deserialize<TttData>(args);
-                PrintJson(readFileArgs.data);
-                Console.Write("輸入要下的位置0-8:");
-                var userInput = Console.ReadLine();
-                if (userInput == null) return;
-                if (!int.TryParse(userInput, out var pos)) return;
+                                char[] chars = readFileArgs.data.ToCharArray();
+                                chars[pos] = 'X';
+                                ttt = new string(chars);
+                                PrintJson(ttt);
+                            }
+                            break;
+                        case "ttt_state":
+                            {
 
-                char[] chars = readFileArgs.data.ToCharArray();
-                chars[pos] = 'X';
-                ttt = new string(chars);
-                System.Diagnostics.Trace.WriteLine("player->");
-                PrintJson(ttt);
+                            }
+                            break;
+                    }
+
+                    
+                }
+                catch(Exception ee)
+                {
+                    System.Diagnostics.Trace.WriteLine(ee.Message);
+                }
+                
 
                 resp = "";
                 var toolresp = $"<|tool_response>response:ttt_out{{}}<tool_response|>";

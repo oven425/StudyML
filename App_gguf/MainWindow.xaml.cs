@@ -26,6 +26,7 @@ namespace App_gguf
         public MainWindow()
         {
             InitializeComponent();
+            _ = this.LLamaCpp.New();
         }
 
         public MainUI LLamaCpp { get; set; } = new MainUI();
