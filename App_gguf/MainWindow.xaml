@@ -6,14 +6,15 @@
     xmlns:local="using:App_gguf"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    mc:Ignorable="d"
+    mc:Ignorable="d" 
+    Activated="Window_Activated"
     Title="App_gguf">
 
     <Window.SystemBackdrop>
         <MicaBackdrop />
     </Window.SystemBackdrop>
 
-    <Grid>
+    <Grid >
         <Grid.RowDefinitions>
             <RowDefinition/>
             <RowDefinition Height="Auto"/>
@@ -23,15 +24,15 @@
                 <RowDefinition/>
                 <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
-            <ListBox ItemsSource="{x:Bind LLamaCpp.Historys}">
+            <!--<ListBox ItemsSource="{x:Bind LLamaCpp.Historys}">
                 <ListBox.ItemTemplate>
                     <DataTemplate x:DataType="local:History">
                         <TextBlock Text="{x:Bind Message}"/>
                     </DataTemplate>
                 </ListBox.ItemTemplate>
-            </ListBox>
-            <TextBox Text="{x:Bind LLamaCpp.User}" PlaceholderText="詢問 Copilot" MinHeight="100" AcceptsReturn="True"/>
-            <Button x:Name="button_send" Command="{x:Bind LLamaCpp.SendCommand}" Grid.Row="1" HorizontalAlignment="Right">
+            </ListBox>-->
+            <TextBox Text="{x:Bind LLamaCpp.UserQuestion}" PlaceholderText="詢問 Copilot" MinHeight="100" AcceptsReturn="True"/>
+            <Button IsEnabled="{x:Bind LLamaCpp.IsLoaded}" x:Name="button_send" Command="{x:Bind LLamaCpp.SendCommand}" Grid.Row="1" HorizontalAlignment="Right">
                 <SymbolIcon Symbol="Send" />
             </Button>
         </Grid>

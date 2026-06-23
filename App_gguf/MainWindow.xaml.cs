@@ -30,5 +30,10 @@ namespace App_gguf
         }
 
         public MainUI LLamaCpp { get; set; } = new MainUI();
+
+        async private void Window_Activated(object sender, WindowActivatedEventArgs args)
+        {
+            
+        }
     }
 }
