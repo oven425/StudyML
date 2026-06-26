@@ -32,7 +32,7 @@
                 </ListBox.ItemTemplate>
             </ListBox>-->
             <TextBox Text="{x:Bind LLamaCpp.UserQuestion}" PlaceholderText="詢問 Copilot" MinHeight="100" AcceptsReturn="True"/>
-            <Button IsEnabled="{x:Bind LLamaCpp.IsLoaded}" x:Name="button_send" Command="{x:Bind LLamaCpp.SendCommand}" Grid.Row="1" HorizontalAlignment="Right">
+            <Button IsEnabled="{x:Bind LLamaCpp.IsLoaded, Mode=OneWay}" x:Name="button_send" Command="{x:Bind LLamaCpp.SendCommand}" Grid.Row="1" HorizontalAlignment="Right">
                 <SymbolIcon Symbol="Send" />
             </Button>
         </Grid>

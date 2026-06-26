@@ -57,7 +57,7 @@ namespace App_gguf
             //    //}
 
             await Task.Delay(1000);
-            this.m_IsLoading = false;
+            //this.m_IsLoading = false;
             this.IsLoaded = true;
             //}
 

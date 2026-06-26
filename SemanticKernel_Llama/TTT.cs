@@ -23,7 +23,7 @@ namespace SemanticKernel_Llama
             var parameters = new ModelParams(modelPath)
             {
                 ContextSize = 8192,
-                GpuLayerCount = 20,
+                GpuLayerCount = 0,
             };
 
             using var model = await LLamaWeights.LoadFromFileAsync(parameters);
