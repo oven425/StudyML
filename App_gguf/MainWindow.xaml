@@ -7,6 +7,7 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d" 
+    xmlns:controls="using:CommunityToolkit.WinUI.UI.Controls"
     Activated="Window_Activated"
     Title="App_gguf">
 
@@ -19,22 +20,26 @@
             <RowDefinition/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
+        <ListBox ItemsSource="{x:Bind LLamaCpp.Historys, Mode=OneWay}">
+            <ListBox.ItemTemplate>
+                <DataTemplate x:DataType="local:History">
+                    <controls:MarkdownTextBlock Text="{x:Bind Message, Mode=OneWay}"/>
+                    <!--<TextBlock Text="{x:Bind Message, Mode=OneWay}"/>-->
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
         <Grid Grid.Row="1">
             <Grid.RowDefinitions>
                 <RowDefinition/>
                 <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
-            <!--<ListBox ItemsSource="{x:Bind LLamaCpp.Historys}">
-                <ListBox.ItemTemplate>
-                    <DataTemplate x:DataType="local:History">
-                        <TextBlock Text="{x:Bind Message}"/>
-                    </DataTemplate>
-                </ListBox.ItemTemplate>
-            </ListBox>-->
-            <TextBox Text="{x:Bind LLamaCpp.UserQuestion}" PlaceholderText="詢問 Copilot" MinHeight="100" AcceptsReturn="True"/>
-            <Button IsEnabled="{x:Bind LLamaCpp.IsLoaded, Mode=OneWay}" x:Name="button_send" Command="{x:Bind LLamaCpp.SendCommand}" Grid.Row="1" HorizontalAlignment="Right">
-                <SymbolIcon Symbol="Send" />
-            </Button>
+            <TextBox Text="{x:Bind LLamaCpp.UserQuestion, Mode=TwoWay}" PlaceholderText="詢問 Copilot" MinHeight="100" AcceptsReturn="True"/>
+            <StackPanel Grid.Row="1">
+                <Button IsEnabled="{x:Bind LLamaCpp.IsLoaded, Mode=OneWay}" x:Name="button_send" Command="{x:Bind LLamaCpp.SendCommand}" Grid.Row="1" HorizontalAlignment="Right">
+                    <SymbolIcon Symbol="Send" />
+                </Button>
+            </StackPanel>
+            
         </Grid>
     </Grid>
 </Window>
