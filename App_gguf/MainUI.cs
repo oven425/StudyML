@@ -49,7 +49,7 @@ namespace App_gguf
         <|tool>declaration:list_directory{
           description: <|"|>列出指定資料夾中的所有檔案與目錄。<|"|>,
           parameters: {
-            type: <<|"|>object<|"|>,
+            type: <|"|>object<|"|>,
             properties: {
               dir_path: {
                 type: <|"|>string<|"|>,
@@ -177,67 +177,6 @@ namespace App_gguf
                 }
             }
 
-            //string toolCallPattern = @"<\|tool_call>(.*?)<tool_call\|>";
-            //MatchCollection toolCallMatchs = Regex.Matches(hh.Message, toolCallPattern, RegexOptions.Singleline);
-            //if(toolCallMatchs.Count > 0)
-            //{
-            //    string toolresp = "";
-            //    for (int i = 0; i < toolCallMatchs.Count; i++)
-            //    {
-            //        string toolCallJson = toolCallMatchs[i].Value.Trim();
-            //        var (action, argsContent) = NormailiszeCToolCall(toolCallJson);
-            //        switch (action)
-            //        {
-            //            case "read_file":
-            //                var readFileArgs = JsonSerializer.Deserialize<ReadFileArgs>(argsContent);
-            //                if (readFileArgs != null)
-            //                {
-            //                    string fileContent = ReadLocalFile(readFileArgs.file_path);
-            //                    toolresp = $"<|tool_response>response:read_file{fileContent}<tool_response|>";
-            //                }
-            //                break;
-            //            case "get_datetime":
-            //                var resp = JsonSerializer.Serialize(new ToolRepsonse()
-            //                {
-            //                    Data = DateTime.Now.ToString()
-            //                });
-            //                toolresp = $"<|tool_response>response:get_datetime{resp}<tool_response|>";
-            //                break;
-            //            case "list_directory":
-            //                var listdirargs = JsonSerializer.Deserialize<ListDirArgs>(argsContent);
-            //                resp = list_directory(listdirargs.dir_path);
-            //                toolresp = $"<|tool_response>response:list_directory{resp}<tool_response|>";
-            //                break;
-            //            case "get_usename":
-            //                resp = JsonSerializer.Serialize(new ToolRepsonse()
-            //                {
-            //                    Data = Environment.UserName
-            //                });
-            //                toolresp = $"<|tool_response>response:get_usename{resp}<tool_response|>";
-            //                break;
-            //            case "get_FolderPath":
-            //                var getfolderargs = JsonSerializer.Deserialize<GetFolderArgs>(argsContent);
-            //                var sss = getfolderargs.folder switch
-            //                {
-            //                    "Desktop" => Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory),
-            //                    _=> "",
-            //                };
-            //                resp = JsonSerializer.Serialize(new ToolRepsonse()
-            //                {
-            //                    Data = sss
-            //                });
-            //                toolresp = $"<|tool_response>response:get_FolderPath{resp}<tool_response|>";
-
-
-            //                break;
-            //        }
-            //        await foreach (var token in this.m_Executor.InferAsync(toolresp, this.m_InferenceParams))
-            //        {
-            //            System.Diagnostics.Trace.Write(token);
-            //            hh.Message += token;
-            //        }
-            //    }
-            //}
 
         }
 
