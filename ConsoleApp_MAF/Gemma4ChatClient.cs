@@ -117,14 +117,69 @@ namespace ConsoleApp_MAF
             MatchCollection toolCallMatchs = Regex.Matches(resp_str, toolCallPattern, RegexOptions.Singleline);
             if (toolCallMatchs.Count > 0)
             {
-                FunctionCallContent[] ff = [];
-                    
-                response = new(new ChatMessage(ChatRole.Tool, ff));
+                var functionCalls = new List<FunctionCallContent>();
+                foreach (Match match in toolCallMatchs)
+                {
+                    string toolCallJson = match.Groups[1].Value.Trim();
+                    try
+                    {
+                        var doc = JsonDocument.Parse(toolCallJson);
+                        string funcName = doc.RootElement.GetProperty("name").GetString() ?? "";
+                        IDictionary<string, object?>? arguments = null;
+                        if (doc.RootElement.TryGetProperty("arguments", out var argsElem))
+                        {
+                            arguments = JsonSerializer.Deserialize<Dictionary<string, object?>>(argsElem.GetRawText());
+                        }
+
+                        string callId = Guid.NewGuid().ToString("N")[..8];
+                        functionCalls.Add(new FunctionCallContent(callId, funcName, arguments));
+                    }
+                    catch { /* 略過格式錯誤的 tool call */ }
+                }
+                var assistantMsg = new ChatMessage(ChatRole.Assistant, [.. functionCalls]);
+                response = new ChatResponse(assistantMsg)
+                {
+                    FinishReason = ChatFinishReason.ToolCalls
+                };
+
             }
 
 
             response ??= new(new ChatMessage(ChatRole.Assistant, strb.ToString()));
             return response;
+        }
+
+        private string BuildPrompt(IEnumerable<ChatMessage> messages)
+        {
+            var sb = new StringBuilder();
+            bool isFirst = m_IsFirst;
+            if (isFirst)
+            {
+                sb.Append(m_SystemPrompt);
+                sb.AppendLine();
+                m_IsFirst = false;
+            }
+
+            foreach (var msg in messages)
+            {
+                if (msg.Role == ChatRole.User)
+                {
+                    sb.AppendLine($"<|turn>user\n{msg.Text}<turn|>");
+                }
+                else if (msg.Role == ChatRole.Assistant)
+                {
+                }
+                else if (msg.Role == ChatRole.Tool)
+                {
+                    foreach (var content in msg.Contents.OfType<FunctionResultContent>())
+                    {
+                        sb.AppendLine($"<|tool_response>{JsonSerializer.Serialize(content.Result)}<tool_response|>");
+                    }
+                }
+            }
+
+            sb.AppendLine("<|turn>model");
+            return sb.ToString();
         }
 
         public object? GetService(Type serviceType, object? serviceKey = null)
