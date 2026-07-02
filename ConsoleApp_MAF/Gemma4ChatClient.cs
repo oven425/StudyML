@@ -30,33 +30,26 @@ namespace ConsoleApp_MAF
         {
             if (m_Parameters == null)
             {
-                var tools = "";
+                var strb_tool = new StringBuilder();
                 if (options != null)
                 {
                     foreach (var oo in options.Tools)
                     {
+                        string tool = $$"""
+                            <|tool>declaration:{{oo.Name}}{
+                              description: <|"|>{{oo.Description}}<|"|>,
+                              parameters: {          
+                              }
+                            }<tool|>
+                            """;
 
-                        if (oo is AIFunction aifun)
-                        {
-
-                            string schemaJson = JsonSerializer.Serialize(aifun.JsonSchema, new JsonSerializerOptions { WriteIndented = false });
-                            var tt = $"<|tool>declaration:{aifun.Name}<tool|>";
-                        }
-
-                        var tool = """
-                        <|tool>declaration:get_datetime{
-                          description: <|"|>取得現在的時間<|"|>,
-                          parameters: {          
-                          }
-                        }<tool|>
-                        """;
-                        tools = tool;
+                        strb_tool.AppendLine(tool);
                     }
                 }
                 m_SystemPrompt = $"""
                 <|turn>system
                 {options?.Instructions ?? ""}
-                {tools}
+                {strb_tool}
                 <turn|>
                 """;
 
@@ -95,16 +88,31 @@ namespace ConsoleApp_MAF
             var lastmsg = messages.LastOrDefault();
             if (lastmsg != null)
             {
-                string prompt_user = $"""
-                <|turn>user
-                {lastmsg.Text}<turn|>
-                <|turn>model
-                """;
-                if (m_IsFirst)
+                var prompt_user = "";
+                if (lastmsg.Role == ChatRole.Tool)
                 {
-                    prompt_user = $"{m_SystemPrompt}\n{prompt_user}";
-                    m_IsFirst = false;
+                    foreach (var content in lastmsg.Contents.OfType<FunctionResultContent>())
+                    {
+                        strb.Append($"<|tool_response>{JsonSerializer.Serialize(content.Result)}<tool_response|>");
+                        
+                    }
+                    prompt_user = strb.ToString();
+                    strb.Clear();
                 }
+                else if(lastmsg.Role == ChatRole.User)
+                {
+                    prompt_user = $"""
+                        <|turn>user
+                        {lastmsg.Text}<turn|>
+                        <|turn>model
+                    """;
+                    if (m_IsFirst)
+                    {
+                        prompt_user = $"{m_SystemPrompt}\n{prompt_user}";
+                        m_IsFirst = false;
+                    }
+                }
+                
 
                 await foreach (var token in this.m_Executor.InferAsync(prompt_user, this.m_InferenceParams))
                 {
@@ -121,18 +129,19 @@ namespace ConsoleApp_MAF
                 foreach (Match match in toolCallMatchs)
                 {
                     string toolCallJson = match.Groups[1].Value.Trim();
+                    (string action, string args) = NormailiszeCToolCall(toolCallJson);
                     try
                     {
-                        var doc = JsonDocument.Parse(toolCallJson);
-                        string funcName = doc.RootElement.GetProperty("name").GetString() ?? "";
+                        //var doc = JsonDocument.Parse(toolCallJson);
+                        //string funcName = doc.RootElement.GetProperty("name").GetString() ?? "";
                         IDictionary<string, object?>? arguments = null;
-                        if (doc.RootElement.TryGetProperty("arguments", out var argsElem))
-                        {
-                            arguments = JsonSerializer.Deserialize<Dictionary<string, object?>>(argsElem.GetRawText());
-                        }
+                        //if (doc.RootElement.TryGetProperty("arguments", out var argsElem))
+                        //{
+                        //    //arguments = JsonSerializer.Deserialize<Dictionary<string, object?>>(argsElem.GetRawText());
+                        //}
 
                         string callId = Guid.NewGuid().ToString("N")[..8];
-                        functionCalls.Add(new FunctionCallContent(callId, funcName, arguments));
+                        functionCalls.Add(new FunctionCallContent(callId, action, arguments));
                     }
                     catch { /* 略過格式錯誤的 tool call */ }
                 }
@@ -147,6 +156,26 @@ namespace ConsoleApp_MAF
 
             response ??= new(new ChatMessage(ChatRole.Assistant, strb.ToString()));
             return response;
+        }
+
+        (string action, string argsContent) NormailiszeCToolCall(string input)
+        {
+            string basePattern = @"call:(?<action>\w+)\{(?<argsContent>.*?)\}";
+            Match match = Regex.Match(input, basePattern);
+
+            if (!match.Success)
+            {
+                return (string.Empty, string.Empty);
+            }
+
+            string action = match.Groups["action"].Value;
+            string argsContent = match.Groups["argsContent"].Value;
+            string cleanPattern = @"(?<key>\w+)\s*:\s*<\|""\|>(?<val>.*?)<\|""\|>";
+            string standardizedArgs = Regex.Replace(argsContent, cleanPattern, @"""${key}"":""${val}""");
+            standardizedArgs = Regex.Replace(standardizedArgs, @"\\(?![""\\/bfnrt]|u[0-9a-fA-F]{4})", @"\\");
+
+            string finalJson = $"{{{standardizedArgs}}}";
+            return (action, finalJson);
         }
 
         private string BuildPrompt(IEnumerable<ChatMessage> messages)
