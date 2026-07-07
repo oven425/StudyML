@@ -13,15 +13,16 @@ using System.Text.RegularExpressions;
 using static LLama.Common.ChatHistory;
 using static System.Runtime.InteropServices.JavaScript.JSType;
 
-var rrrr = await get_currentlocation();
 Console.WriteLine("Hello, World!");
 string m_ModelPath = @"..\..\..\..\gguf_gemma4\gemma-4-E2B-it-Q4_K_M.gguf";
-
+OpenMeteo om = new();
 var tools = new AIFunction[]
 {
-    AIFunctionFactory.Create(get_datetime),
-    AIFunctionFactory.Create(get_currentuser),
-    AIFunctionFactory.Create(get_currentlocation)
+    //AIFunctionFactory.Create(get_datetime),
+    //AIFunctionFactory.Create(get_currentuser),
+    AIFunctionFactory.Create(get_currentlocation),
+    //AIFunctionFactory.Create(get_currentweather),
+    AIFunctionFactory.Create(om.GetCurrent)
 };
 
 var option = new ChatOptions()
@@ -30,9 +31,20 @@ var option = new ChatOptions()
     Tools = tools
 };
 
+//var messages = new List<ChatMessage>
+//{
+//    new ChatMessage(ChatRole.User, "請判斷這張圖的內容"),
+//    new ChatMessage(ChatRole.User, 
+//    {
+//        ImageData = File.ReadAllBytes("sample.png") // 圖片 byte[]
+//    })
+//};
+
 var gemma4client = new Gemma4ChatClient(m_ModelPath);
 var funcclient = gemma4client.AsBuilder().UseFunctionInvocation().Build();
-var aaresp = await funcclient.GetResponseAsync("現在的使用者是誰和現在幾點?", option);
+var ims = await funcclient.GetResponseAsync(new ChatMessage(ChatRole.User, [new AIContent()]));
+
+var aaresp = await funcclient.GetResponseAsync("現在的位置的天氣?", option);
 
 var agent = funcclient.AsAIAgent(new ChatClientAgentOptions()
 {
@@ -42,13 +54,8 @@ var agent = funcclient.AsAIAgent(new ChatClientAgentOptions()
 
 var resp_agent = await agent.RunAsync("現在幾點?");
 
-[Description("取得現在的時間")]
-ToolResponse get_datetime()
-    => new() { Data = DateTime.Now.ToString("yyyy/MM/dd HH:mm:ss") };
-[Description("取得windows現在的使用者名稱")]
-ToolResponse get_currentuser()
-    => new() { Data = Environment.UserName };
-[Description("取得現在使用者的城市/GPS")]
+
+[Description("取得現在使用者的城市和經緯度")]
 async Task<ToolResponse> get_currentlocation()
 {
     var resp = new ToolResponse();
@@ -59,7 +66,7 @@ async Task<ToolResponse> get_currentlocation()
         var ipapi = JsonSerializer.Deserialize<IpApiResponse>(response);
         if(ipapi != null)
         {
-            resp.Data = $"City:{ipapi.City},Lon:{ipapi.Lon}Lat:{ipapi.Lat}";
+            resp.Data = $"城市:{ipapi.City},經度:{ipapi.Lon},緯度:{ipapi.Lat}";
         }
         
     }
@@ -72,25 +79,6 @@ async Task<ToolResponse> get_currentlocation()
     return resp;
 }
 
-[Description("取得經位度位置的天氣")]
-async Task<ToolResponse> get_currentweather(string lon, string lat)
-{
-    var resp = new ToolResponse();
-    try
-    {
-        using var client = new HttpClient();
-        string url = $"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current_weather=true";
-        string response = await client.GetStringAsync(url);
-
-    }
-    catch (Exception ex)
-    {
-        resp.IsFail = true;
-        resp.FailMessgae = ex.Message;
-    }
-
-    return resp;
-}
 
 public class IpApiResponse
 {

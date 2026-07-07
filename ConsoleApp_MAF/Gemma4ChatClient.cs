@@ -5,9 +5,11 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using System.Xml.Linq;
 
 namespace ConsoleApp_MAF
 {
@@ -35,15 +37,28 @@ namespace ConsoleApp_MAF
                 {
                     foreach (var oo in options.Tools)
                     {
+                        var str_pps = "";
+                        if (oo is AIFunction aifun)
+                        {
+
+                            str_pps = JsonSerializer.Serialize(aifun.JsonSchema, new JsonSerializerOptions()
+                            {
+                                WriteIndented = true,
+                                Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+                            });
+                        }
+                        str_pps = str_pps.Replace("\"", "<|\"|>");
                         string tool = $$"""
                             <|tool>declaration:{{oo.Name}}{
                               description: <|"|>{{oo.Description}}<|"|>,
-                              parameters: {          
-                              }
+                              parameters: {{str_pps}}
                             }<tool|>
                             """;
-
-                        strb_tool.AppendLine(tool);
+                        if(strb_tool.Length >0)
+                        {
+                            strb_tool.AppendLine();
+                        }
+                        strb_tool.Append(tool);
                     }
                 }
                 m_SystemPrompt = $"""
@@ -105,7 +120,7 @@ namespace ConsoleApp_MAF
                         <|turn>user
                         {lastmsg.Text}<turn|>
                         <|turn>model
-                    """;
+                        """;
                     if (m_IsFirst)
                     {
                         prompt_user = $"{m_SystemPrompt}\n{prompt_user}";
@@ -139,7 +154,10 @@ namespace ConsoleApp_MAF
                         //{
                         //    //arguments = JsonSerializer.Deserialize<Dictionary<string, object?>>(argsElem.GetRawText());
                         //}
-
+                        if(!string.IsNullOrEmpty(args))
+                        {
+                            arguments = JsonSerializer.Deserialize<Dictionary<string, object?>>(args);
+                        }
                         string callId = Guid.NewGuid().ToString("N")[..8];
                         functionCalls.Add(new FunctionCallContent(callId, action, arguments));
                     }
@@ -161,7 +179,7 @@ namespace ConsoleApp_MAF
         (string action, string argsContent) NormailiszeCToolCall(string input)
         {
             string basePattern = @"call:(?<action>\w+)\{(?<argsContent>.*?)\}";
-            Match match = Regex.Match(input, basePattern);
+            Match match = Regex.Match(input, basePattern, RegexOptions.Singleline);
 
             if (!match.Success)
             {
@@ -230,4 +248,23 @@ namespace ConsoleApp_MAF
             }
         }
     }
+
+    //public static class Gemma4Extensions
+    //{
+    //    public static Gemma4ChatBuilder EnableReasoningTrace(this Gemma4ChatBuilder builder)
+    //    {
+    //        return builder.AddMiddleware(async (context, next) =>
+    //        {
+    //            // 在 prompt 前加上 <|think|>
+    //            context.Input = "<|think|>\n" + context.Input;
+
+    //            await next();
+
+    //            // 解析模型輸出
+    //            var raw = context.Response.Text;
+    //            context.Response.ReasoningTrace = ExtractBetween(raw, "<|think|>", "<|assistant|>");
+    //            context.Response.Answer = ExtractAfter(raw, "<|assistant|>");
+    //        });
+    //    }
+    //}
 }
