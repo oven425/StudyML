@@ -15,6 +15,8 @@ using static System.Runtime.InteropServices.JavaScript.JSType;
 
 Console.WriteLine("Hello, World!");
 string m_ModelPath = @"..\..\..\..\gguf_gemma4\gemma-4-E2B-it-Q4_K_M.gguf";
+string m_MmProjPath = @"..\..\..\..\gguf_gemma4\mmproj-gemma-4-E2B-it-Q8_0.gguf";
+
 OpenMeteo om = new();
 var tools = new AIFunction[]
 {
@@ -34,17 +36,24 @@ var option = new ChatOptions()
 //var messages = new List<ChatMessage>
 //{
 //    new ChatMessage(ChatRole.User, "請判斷這張圖的內容"),
-//    new ChatMessage(ChatRole.User, 
+//    new ChatMessage(ChatRole.User,
 //    {
 //        ImageData = File.ReadAllBytes("sample.png") // 圖片 byte[]
 //    })
 //};
 
-var gemma4client = new Gemma4ChatClient(m_ModelPath);
+var gemma4client = new Gemma4ChatClient(m_ModelPath, m_MmProjPath);
 var funcclient = gemma4client.AsBuilder().UseFunctionInvocation().Build();
-var ims = await funcclient.GetResponseAsync(new ChatMessage(ChatRole.User, [new AIContent()]));
 
-var aaresp = await funcclient.GetResponseAsync("現在的位置的天氣?", option);
+
+//var aaresp = await funcclient.GetResponseAsync("現在的位置的天氣?", option);
+var cm = new ChatMessage(ChatRole.User, 
+    [
+        new TextContent("請辨識這張圖片"),
+        await DataContent.LoadFromAsync("a.jpg")
+    ]);
+var aaresp = await funcclient.GetResponseAsync(cm, option);
+
 
 var agent = funcclient.AsAIAgent(new ChatClientAgentOptions()
 {

@@ -1,5 +1,7 @@
-﻿using LLama;
+﻿using CommunityToolkit.HighPerformance.Helpers;
+using LLama;
 using LLama.Common;
+using LLama.Native;
 using Microsoft.Extensions.AI;
 using System;
 using System.Collections.Generic;
@@ -13,14 +15,15 @@ using System.Xml.Linq;
 
 namespace ConsoleApp_MAF
 {
-    public class Gemma4ChatClient(string modelpath) : IChatClient
+    public class Gemma4ChatClient(string modelpath, string? mtm_modepath = null) : IChatClient
     {
         ModelParams? m_Parameters;
         LLamaWeights? m_Weights;
         LLamaContext? m_Context;
         InteractiveExecutor? m_Executor;
         InferenceParams? m_InferenceParams;
-
+        MtmdWeights? m_MtmdWeights;
+        MtmdContextParams? m_MtmdContextParams;
         public void Dispose()
         {
             m_Context?.Dispose();
@@ -75,7 +78,21 @@ namespace ConsoleApp_MAF
                 };
                 this.m_Weights = await LLamaWeights.LoadFromFileAsync(this.m_Parameters);
                 this.m_Context = this.m_Weights.CreateContext(this.m_Parameters);
-                this.m_Executor = new InteractiveExecutor(this.m_Context);
+                if(!string.IsNullOrEmpty(mtm_modepath))
+                {
+                    this.m_MtmdContextParams = new MtmdContextParams();
+                    this.m_MtmdWeights = await MtmdWeights.LoadFromFileAsync(mtm_modepath, this.m_Weights, this.m_MtmdContextParams);
+                }
+
+                if(this.m_MtmdWeights != null)
+                {
+                    this.m_Executor = new InteractiveExecutor(this.m_Context, m_MtmdWeights);
+                }
+                else
+                {
+                    this.m_Executor = new InteractiveExecutor(this.m_Context);
+                }
+                
 
                 this.m_InferenceParams = new InferenceParams()
                 {
@@ -97,8 +114,9 @@ namespace ConsoleApp_MAF
         bool m_IsFirst = true;
         async public Task<ChatResponse> GetResponseAsync(IEnumerable<ChatMessage> messages, ChatOptions? options = null, CancellationToken cancellationToken = default)
         {
-            var contents = new List<AIContent>();
+
             await Init(options);
+            if (m_Executor is null) return new ChatResponse();
             var strb = new StringBuilder();
             var lastmsg = messages.LastOrDefault();
             if (lastmsg != null)
@@ -116,6 +134,15 @@ namespace ConsoleApp_MAF
                 }
                 else if(lastmsg.Role == ChatRole.User)
                 {
+                    foreach(var oo in  lastmsg.Contents)
+                    {
+                        
+                        if(this.m_MtmdWeights != null && oo is DataContent dc)
+                        {
+                            var jpg_a = m_MtmdWeights.LoadMedia(dc.Data.Span);
+                            m_Executor.Embeds.Add(jpg_a);
+                        }
+                    }
                     prompt_user = $"""
                         <|turn>user
                         {lastmsg.Text}<turn|>
@@ -147,13 +174,7 @@ namespace ConsoleApp_MAF
                     (string action, string args) = NormailiszeCToolCall(toolCallJson);
                     try
                     {
-                        //var doc = JsonDocument.Parse(toolCallJson);
-                        //string funcName = doc.RootElement.GetProperty("name").GetString() ?? "";
                         IDictionary<string, object?>? arguments = null;
-                        //if (doc.RootElement.TryGetProperty("arguments", out var argsElem))
-                        //{
-                        //    //arguments = JsonSerializer.Deserialize<Dictionary<string, object?>>(argsElem.GetRawText());
-                        //}
                         if(!string.IsNullOrEmpty(args))
                         {
                             arguments = JsonSerializer.Deserialize<Dictionary<string, object?>>(args);
@@ -194,39 +215,6 @@ namespace ConsoleApp_MAF
 
             string finalJson = $"{{{standardizedArgs}}}";
             return (action, finalJson);
-        }
-
-        private string BuildPrompt(IEnumerable<ChatMessage> messages)
-        {
-            var sb = new StringBuilder();
-            bool isFirst = m_IsFirst;
-            if (isFirst)
-            {
-                sb.Append(m_SystemPrompt);
-                sb.AppendLine();
-                m_IsFirst = false;
-            }
-
-            foreach (var msg in messages)
-            {
-                if (msg.Role == ChatRole.User)
-                {
-                    sb.AppendLine($"<|turn>user\n{msg.Text}<turn|>");
-                }
-                else if (msg.Role == ChatRole.Assistant)
-                {
-                }
-                else if (msg.Role == ChatRole.Tool)
-                {
-                    foreach (var content in msg.Contents.OfType<FunctionResultContent>())
-                    {
-                        sb.AppendLine($"<|tool_response>{JsonSerializer.Serialize(content.Result)}<tool_response|>");
-                    }
-                }
-            }
-
-            sb.AppendLine("<|turn>model");
-            return sb.ToString();
         }
 
         public object? GetService(Type serviceType, object? serviceKey = null)
