@@ -10,8 +10,6 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
-using static LLama.Common.ChatHistory;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 
 Console.WriteLine("Hello, World!");
 string m_ModelPath = @"..\..\..\..\gguf_gemma4\gemma-4-E2B-it-Q4_K_M.gguf";
@@ -33,34 +31,31 @@ var option = new ChatOptions()
     Tools = tools
 };
 
-//var messages = new List<ChatMessage>
-//{
-//    new ChatMessage(ChatRole.User, "請判斷這張圖的內容"),
-//    new ChatMessage(ChatRole.User,
-//    {
-//        ImageData = File.ReadAllBytes("sample.png") // 圖片 byte[]
-//    })
-//};
 
-var gemma4client = new Gemma4ChatClient(m_ModelPath, m_MmProjPath);
+var gemma4client = new Gemma4ChatClient(m_ModelPath);
+
 var funcclient = gemma4client.AsBuilder().UseFunctionInvocation().Build();
 
 
+
 //var aaresp = await funcclient.GetResponseAsync("現在的位置的天氣?", option);
-var cm = new ChatMessage(ChatRole.User, 
-    [
-        new TextContent("請辨識這張圖片"),
-        await DataContent.LoadFromAsync("a.jpg")
-    ]);
-var aaresp = await funcclient.GetResponseAsync(cm, option);
+//var cm = new ChatMessage(ChatRole.User, 
+//    [
+//        new TextContent("請辨識這張圖片"),
+//        await DataContent.LoadFromAsync("a.jpg")
+//    ]);
+//var aaresp = await funcclient.GetResponseAsync(cm, option);
 
 
 var agent = funcclient.AsAIAgent(new ChatClientAgentOptions()
 {
+    
     Name ="assiant",
-    ChatOptions = option
+    ChatOptions = option,
+    //AIContextProviders = [new TextSearchProvider()]
 });
-
+var session = await agent.CreateSessionAsync();
+//https://github.com/microsoft/agent-framework/tree/main
 var resp_agent = await agent.RunAsync("現在幾點?");
 
 
