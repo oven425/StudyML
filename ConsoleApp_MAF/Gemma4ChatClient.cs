@@ -109,7 +109,11 @@ namespace ConsoleApp_MAF
 
             }
         }
-
+        JsonSerializerOptions jsonoptions = new JsonSerializerOptions()
+        {
+            Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
+            WriteIndented = false
+        };
         string m_SystemPrompt = "";
         bool m_IsFirst = true;
         async public Task<ChatResponse> GetResponseAsync(IEnumerable<ChatMessage> messages, ChatOptions? options = null, CancellationToken cancellationToken = default)
@@ -126,7 +130,7 @@ namespace ConsoleApp_MAF
                 {
                     foreach (var content in lastmsg.Contents.OfType<FunctionResultContent>())
                     {
-                        strb.Append($"<|tool_response>{JsonSerializer.Serialize(content.Result)}<tool_response|>");
+                        strb.Append($"<|tool_response>{JsonSerializer.Serialize(content.Result, jsonoptions)}<tool_response|>");
                         
                     }
                     prompt_user = strb.ToString();
@@ -155,11 +159,12 @@ namespace ConsoleApp_MAF
                     }
                 }
                 
-
+                System.Diagnostics.Trace.WriteLine(prompt_user);
                 await foreach (var token in this.m_Executor.InferAsync(prompt_user, this.m_InferenceParams))
                 {
                     strb.Append(token);
                 }
+                System.Diagnostics.Trace.WriteLine(strb.ToString());
             }
             ChatResponse? response = null;
             string toolCallPattern = @"<\|tool_call>(.*?)<tool_call\|>";
@@ -182,7 +187,10 @@ namespace ConsoleApp_MAF
                         string callId = Guid.NewGuid().ToString("N")[..8];
                         functionCalls.Add(new FunctionCallContent(callId, action, arguments));
                     }
-                    catch { /* 略過格式錯誤的 tool call */ }
+                    catch(Exception ee)
+                    {
+                        System.Diagnostics.Trace.WriteLine(ee.Message);
+                    }
                 }
                 var assistantMsg = new ChatMessage(ChatRole.Assistant, [.. functionCalls]);
                 response = new ChatResponse(assistantMsg)
@@ -211,7 +219,7 @@ namespace ConsoleApp_MAF
             string argsContent = match.Groups["argsContent"].Value;
             string cleanPattern = @"(?<key>\w+)\s*:\s*<\|""\|>(?<val>.*?)<\|""\|>";
             string standardizedArgs = Regex.Replace(argsContent, cleanPattern, @"""${key}"":""${val}""");
-            standardizedArgs = Regex.Replace(standardizedArgs, @"\\(?![""\\/bfnrt]|u[0-9a-fA-F]{4})", @"\\");
+            //standardizedArgs = Regex.Replace(standardizedArgs, @"\\(?![""\\/bfnrt]|u[0-9a-fA-F]{4})", @"\\");
 
             string finalJson = $"{{{standardizedArgs}}}";
             return (action, finalJson);

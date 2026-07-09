@@ -16,13 +16,18 @@ string m_ModelPath = @"..\..\..\..\gguf_gemma4\gemma-4-E2B-it-Q4_K_M.gguf";
 string m_MmProjPath = @"..\..\..\..\gguf_gemma4\mmproj-gemma-4-E2B-it-Q8_0.gguf";
 
 OpenMeteo om = new();
+ComputerInfo info = new();
+FileOperation fs = new();
 var tools = new AIFunction[]
 {
-    //AIFunctionFactory.Create(get_datetime),
-    //AIFunctionFactory.Create(get_currentuser),
+    AIFunctionFactory.Create(info.GetCurrentDateTime),
+    AIFunctionFactory.Create(info.GetCurrentUser),
+    AIFunctionFactory.Create(info.GetFolder),
+    AIFunctionFactory.Create(info.list_directory),
+    AIFunctionFactory.Create(fs.ReadFile),
     AIFunctionFactory.Create(get_currentlocation),
-    //AIFunctionFactory.Create(get_currentweather),
     AIFunctionFactory.Create(om.GetCurrent)
+    
 };
 
 var option = new ChatOptions()
@@ -39,11 +44,11 @@ var funcclient = gemma4client.AsBuilder().UseFunctionInvocation().Build();
 
 
 //var aaresp = await funcclient.GetResponseAsync("現在的位置的天氣?", option);
-//var cm = new ChatMessage(ChatRole.User, 
-//    [
-//        new TextContent("請辨識這張圖片"),
-//        await DataContent.LoadFromAsync("a.jpg")
-//    ]);
+var cm = new ChatMessage(ChatRole.User,
+    [
+        new TextContent("請辨識這張圖片"),
+        await DataContent.LoadFromAsync("a.jpg")
+    ]);
 //var aaresp = await funcclient.GetResponseAsync(cm, option);
 
 
@@ -55,6 +60,13 @@ var agent = funcclient.AsAIAgent(new ChatClientAgentOptions()
     //AIContextProviders = [new TextSearchProvider()]
 });
 var session = await agent.CreateSessionAsync();
+
+while(true)
+{
+    var question = Console.ReadLine();
+    var runresp = await agent.RunAsync(question);
+    Console.WriteLine(runresp.Text);
+}
 //https://github.com/microsoft/agent-framework/tree/main
 var resp_agent = await agent.RunAsync("現在幾點?");
 
@@ -76,7 +88,6 @@ async Task<ToolResponse> get_currentlocation()
     }
     catch (Exception ex)
     {
-        resp.IsFail = true;
         resp.FailMessgae = ex.Message;
     }
     
@@ -101,8 +112,8 @@ public class IpApiResponse
 
 public class ToolResponse
 {
-    public bool IsFail { get; set; }
-    public string FailMessgae { set; get; } = string.Empty;
+    public bool? IsFail => string.IsNullOrEmpty(FailMessgae)?null:true;
+    public string? FailMessgae { set; get; } = null;
     public string Data { set; get; } = string.Empty;
 }
 

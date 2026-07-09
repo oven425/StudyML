@@ -27,13 +27,11 @@ public class OpenMeteo
             }
             else
             {
-                resp.IsFail = true;
                 resp.FailMessgae = "not find";
             }
         }
         catch (Exception ex)
         {
-            resp.IsFail = true;
             resp.FailMessgae = ex.Message;
         }
 
