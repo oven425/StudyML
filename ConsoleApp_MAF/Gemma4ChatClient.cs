@@ -138,9 +138,29 @@ namespace ConsoleApp_MAF
                     }
                     foreach (var content in lastmsg.Contents.OfType<FunctionResultContent>())
                     {
-                        var tt = content.Result.GetType();
-                        strb.Append($"<|tool_response>{JsonSerializer.Serialize(content.Result, jsonoptions)}<tool_response|>");
-                        
+                        if (content.Result is JsonElement jsonResult)
+                        {
+                            var toolresp = jsonResult.Deserialize<ToolResponse>(jsonoptions);
+                            if(!string.IsNullOrEmpty(toolresp?.ImageFileName))
+                            {
+                                if(this.m_MtmdWeights == null)
+                                {
+                                    strb.Append($"<|tool_response>不支援多模態<tool_response|>");
+                                    continue;
+                                }
+                                else if(File.Exists(toolresp.ImageFileName))
+                                {
+                                    this.m_Executor.Embeds.Add(this.m_MtmdWeights.LoadMedia(toolresp.ImageFileName));
+                                }
+                                toolresp.ImageFileName = "";
+                                strb.Append($"<|tool_response>{JsonSerializer.Serialize(toolresp, jsonoptions)}<tool_response|>");
+                                continue;
+                            }
+                            strb.Append($"<|tool_response>{JsonSerializer.Serialize(content.Result, jsonoptions)}<tool_response|>");
+
+                        }
+
+
                     }
                     //prompt_user = strb.ToString();
                     prompts.Add(strb.ToString());
@@ -309,23 +329,4 @@ namespace ConsoleApp_MAF
             }
         }
     }
-
-    //public static class Gemma4Extensions
-    //{
-    //    public static Gemma4ChatBuilder EnableReasoningTrace(this Gemma4ChatBuilder builder)
-    //    {
-    //        return builder.AddMiddleware(async (context, next) =>
-    //        {
-    //            // 在 prompt 前加上 <|think|>
-    //            context.Input = "<|think|>\n" + context.Input;
-
-    //            await next();
-
-    //            // 解析模型輸出
-    //            var raw = context.Response.Text;
-    //            context.Response.ReasoningTrace = ExtractBetween(raw, "<|think|>", "<|assistant|>");
-    //            context.Response.Answer = ExtractAfter(raw, "<|assistant|>");
-    //        });
-    //    }
-    //}
 }

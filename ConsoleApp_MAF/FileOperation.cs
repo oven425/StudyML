@@ -29,23 +29,30 @@ namespace ConsoleApp_MAF
         }
 
         [Description("讀取本機電腦中指定路徑的圖片類型的檔案(*.jpg,*.png.....")]
-        async public Task<ChatMessage> ReadImage([Description("檔案的絕對路徑或相對路徑，例如 C:\\Users\\user\\Desktop\\config.jpg 或 ./data.png")] string filename)
+        async public Task<ToolResponse> ReadImage([Description("檔案的絕對路徑或相對路徑，例如 C:\\Users\\user\\Desktop\\config.jpg 或 ./data.png")] string filename)
         {
-            ChatMessage cm = new ChatMessage();
+            //ChatMessage cm = new ChatMessage();
             var resp = new ToolResponse();
             try
             {
-                resp.ImageFileName = filename;
-                resp.Data = "圖片已經載入";
-                
+                if(File.Exists(filename))
+                {
+                    resp.ImageFileName = filename;
+                    resp.Data = "圖片已經載入";
+                }
+                else
+                {
+                    resp.FailMessgae = "找不到圖片檔案";
+                }
             }
             catch (Exception ee)
             {
                 resp.FailMessgae = ee.Message;
             }
-            cm.Contents.Add(new TextContent("123"));
-            cm.Contents.Add(new TextContent("456"));
-            return cm;
+            return resp;
+            //cm.Contents.Add(new TextContent("123"));
+            //cm.Contents.Add(new TextContent("456"));
+            //return cm;
         }
     }
 
