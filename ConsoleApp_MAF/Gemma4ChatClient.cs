@@ -57,7 +57,7 @@ namespace ConsoleApp_MAF
                               parameters: {{str_pps}}
                             }<tool|>
                             """;
-                        if(strb_tool.Length >0)
+                        if (strb_tool.Length > 0)
                         {
                             strb_tool.AppendLine();
                         }
@@ -73,7 +73,7 @@ namespace ConsoleApp_MAF
 
                 this.m_Parameters = new ModelParams(modelpath)
                 {
-                    ContextSize = 81920,
+                    ContextSize = 8192,
                     GpuLayerCount = 0,
                 };
                 this.m_Weights = await LLamaWeights.LoadFromFileAsync(this.m_Parameters);
@@ -102,7 +102,7 @@ namespace ConsoleApp_MAF
                     //    TopP = 0.9F,
                     //    Temperature = 0.1F
                     //},
-                    MaxTokens = 81920,
+                    MaxTokens = 8192,
                     AntiPrompts = ["<turn|>"]
                 };
 
@@ -121,6 +121,7 @@ namespace ConsoleApp_MAF
 
             await Init(options);
             if (m_Executor is null) return new ChatResponse();
+            List<string> prompts = [];
             var strb = new StringBuilder();
             var lastmsg = messages.LastOrDefault();
             if (lastmsg != null)
@@ -128,43 +129,104 @@ namespace ConsoleApp_MAF
                 var prompt_user = "";
                 if (lastmsg.Role == ChatRole.Tool)
                 {
+                    foreach(var oo in lastmsg.Contents)
+                    {
+                        if (oo is TextContent tc)
+                        {
+                            //strb.Append(tc.Text);
+                        }
+                    }
                     foreach (var content in lastmsg.Contents.OfType<FunctionResultContent>())
                     {
+                        var tt = content.Result.GetType();
                         strb.Append($"<|tool_response>{JsonSerializer.Serialize(content.Result, jsonoptions)}<tool_response|>");
                         
                     }
-                    prompt_user = strb.ToString();
+                    //prompt_user = strb.ToString();
+                    prompts.Add(strb.ToString());
                     strb.Clear();
                 }
                 else if(lastmsg.Role == ChatRole.User)
                 {
-                    foreach(var oo in  lastmsg.Contents)
+                    strb.Append("<|turn>user\n");
+                    foreach (var oo in  lastmsg.Contents)
                     {
-                        
-                        if(this.m_MtmdWeights != null && oo is DataContent dc)
+                        if(oo is TextContent tc)
                         {
-                            var jpg_a = m_MtmdWeights.LoadMedia(dc.Data.Span);
-                            m_Executor.Embeds.Add(jpg_a);
+                            strb.Append(tc.Text);
+                        }
+                        else if(this.m_MtmdWeights != null && oo is DataContent dc)
+                        {
+                            //m_Executor.Embeds.Add(m_MtmdWeights.LoadMedia(dc.Data.Span));
                         }
                     }
-                    prompt_user = $"""
-                        <|turn>user
-                        {lastmsg.Text}<turn|>
-                        <|turn>model
-                        """;
+                    strb.Append("\n<turn|>\n<|turn>model");
                     if (m_IsFirst)
                     {
-                        prompt_user = $"{m_SystemPrompt}\n{prompt_user}";
+                        prompt_user = $"{m_SystemPrompt}\n{strb}";
+                        if(m_Executor.Embeds.Count == 0)
+                        {
+                            prompts.Add($"{m_SystemPrompt}\n{strb}");
+                        }
+                        else
+                        {
+                            prompts.Add(m_SystemPrompt);
+                            prompts.Add(strb.ToString());
+                        }
                         m_IsFirst = false;
                     }
+                    else
+                    {
+                        prompts.Add(strb.ToString());
+                    }
+                    //prompts.Add("""
+                    //<|turn>system
+                    //你是個Windows助理,所有回答要有禮貌以及使用繁體中文
+                    //<turn|>
+                    //""");
+                    //prompts.Add("""
+                    //<|turn>user
+                    //用中文描述這張圖片
+                    //<turn|>
+                    //<|turn>model
+                    //""");
                 }
-                
-                System.Diagnostics.Trace.WriteLine(prompt_user);
-                await foreach (var token in this.m_Executor.InferAsync(prompt_user, this.m_InferenceParams))
+                foreach(var oo in prompts)
                 {
-                    strb.Append(token);
+                    strb.Clear();
+                    System.Diagnostics.Trace.WriteLine(oo);
+                    await foreach (var token in this.m_Executor.InferAsync(oo, this.m_InferenceParams))
+                    {
+                        strb.Append(token);
+                    }
+                    System.Diagnostics.Trace.WriteLine(strb.ToString());
                 }
-                System.Diagnostics.Trace.WriteLine(strb.ToString());
+                //strb.Clear();
+                //prompt_user = """
+                //    <|turn>system
+                //    你是個Windows助理,所有回答要有禮貌以及使用繁體中文
+                //    <turn|>
+                //    """;
+                //System.Diagnostics.Trace.WriteLine(prompt_user);
+                //await foreach (var token in this.m_Executor.InferAsync(prompt_user, this.m_InferenceParams))
+                //{
+                //    strb.Append(token);
+                //}
+                //System.Diagnostics.Trace.WriteLine(strb.ToString());
+
+                //strb.Clear();
+                //prompt_user = """
+                //    <|turn>user
+                //    用中文描述這張圖片
+                //    <turn|>
+                //    <|turn>model
+                //    """;
+                //System.Diagnostics.Trace.WriteLine(prompt_user);
+                //await foreach (var token in this.m_Executor.InferAsync(prompt_user, this.m_InferenceParams))
+                //{
+                //    strb.Append(token);
+                //}
+                //System.Diagnostics.Trace.WriteLine(strb.ToString());
             }
             ChatResponse? response = null;
             string toolCallPattern = @"<\|tool_call>(.*?)<tool_call\|>";
@@ -180,9 +242,12 @@ namespace ConsoleApp_MAF
                     try
                     {
                         IDictionary<string, object?>? arguments = null;
-                        if(!string.IsNullOrEmpty(args))
+                        if (!string.IsNullOrEmpty(args))
                         {
-                            arguments = JsonSerializer.Deserialize<Dictionary<string, object?>>(args);
+                            arguments = JsonSerializer.Deserialize<Dictionary<string, object?>>(args, new JsonSerializerOptions
+                            {
+                                Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+                            });
                         }
                         string callId = Guid.NewGuid().ToString("N")[..8];
                         functionCalls.Add(new FunctionCallContent(callId, action, arguments));
@@ -220,7 +285,7 @@ namespace ConsoleApp_MAF
             string cleanPattern = @"(?<key>\w+)\s*:\s*<\|""\|>(?<val>.*?)<\|""\|>";
             string standardizedArgs = Regex.Replace(argsContent, cleanPattern, @"""${key}"":""${val}""");
             //standardizedArgs = Regex.Replace(standardizedArgs, @"\\(?![""\\/bfnrt]|u[0-9a-fA-F]{4})", @"\\");
-
+            standardizedArgs = Regex.Replace(standardizedArgs, @"(?<!\\)\\(?![\\""/bfnrtu])", @"\\");
             string finalJson = $"{{{standardizedArgs}}}";
             return (action, finalJson);
         }

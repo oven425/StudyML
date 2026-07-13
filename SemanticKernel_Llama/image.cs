@@ -54,6 +54,8 @@ namespace SemanticKernel_Llama
             executor.Embeds.Add(jpg_dog);
             await foreach (var token in executor.InferAsync(promptBeforeImage, inferenceParams))
             {
+                Console.Write(token);
+                System.Diagnostics.Trace.Write(token);
             }
 
 

@@ -7,14 +7,36 @@ using Microsoft.Extensions.AI;
 using System.ComponentModel;
 using System.Reflection;
 using System.Text;
+using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
-
+Console.OutputEncoding = System.Text.Encoding.UTF8;
 Console.WriteLine("Hello, World!");
 string m_ModelPath = @"..\..\..\..\gguf_gemma4\gemma-4-E2B-it-Q4_K_M.gguf";
 string m_MmProjPath = @"..\..\..\..\gguf_gemma4\mmproj-gemma-4-E2B-it-Q8_0.gguf";
 
+
+try
+{
+    var fff = "{\"dir_path\":\"C:\\Users\\oven4\\OneDrive\\桌面\"}";
+    IDictionary<string, object?>? arguments = null;
+    if (!string.IsNullOrEmpty(fff))
+    {
+        arguments = JsonSerializer.Deserialize<Dictionary<string, object?>>(fff, new JsonSerializerOptions
+        {
+            Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+        });
+    }
+}
+catch(Exception ee)
+{
+
+}
+
+
+
+//using var codeAct = new HyperlightCodeActProvider(HyperlightCodeActProviderOptions.CreateForWasm(guestPath));
 OpenMeteo om = new();
 ComputerInfo info = new();
 FileOperation fs = new();
@@ -24,7 +46,8 @@ var tools = new AIFunction[]
     AIFunctionFactory.Create(info.GetCurrentUser),
     AIFunctionFactory.Create(info.GetFolder),
     AIFunctionFactory.Create(info.list_directory),
-    AIFunctionFactory.Create(fs.ReadFile),
+    AIFunctionFactory.Create(fs.ReadTxt),
+    AIFunctionFactory.Create(fs.ReadImage),
     AIFunctionFactory.Create(get_currentlocation),
     AIFunctionFactory.Create(om.GetCurrent)
     
@@ -33,31 +56,32 @@ var tools = new AIFunction[]
 var option = new ChatOptions()
 {
     Instructions = "你是個Windows助理,所有回答要有禮貌以及使用繁體中文",
-    Tools = tools
+    Tools = tools,
 };
 
 
-var gemma4client = new Gemma4ChatClient(m_ModelPath);
+var gemma4client = new Gemma4ChatClient(m_ModelPath, m_MmProjPath);
 
 var funcclient = gemma4client.AsBuilder().UseFunctionInvocation().Build();
 
 
 
 //var aaresp = await funcclient.GetResponseAsync("現在的位置的天氣?", option);
-var cm = new ChatMessage(ChatRole.User,
-    [
-        new TextContent("請辨識這張圖片"),
-        await DataContent.LoadFromAsync("a.jpg")
-    ]);
+//var cm = new ChatMessage(ChatRole.User,
+//    [
+//    await DataContent.LoadFromAsync("a.jpg"),
+//        new TextContent("用中文描述這張圖片"),
+        
+//    ]);
 //var aaresp = await funcclient.GetResponseAsync(cm, option);
 
 
 var agent = funcclient.AsAIAgent(new ChatClientAgentOptions()
 {
-    
     Name ="assiant",
     ChatOptions = option,
     //AIContextProviders = [new TextSearchProvider()]
+    //AIContextProviders = [new TodoProvider()]
 });
 var session = await agent.CreateSessionAsync();
 
@@ -115,5 +139,8 @@ public class ToolResponse
     public bool? IsFail => string.IsNullOrEmpty(FailMessgae)?null:true;
     public string? FailMessgae { set; get; } = null;
     public string Data { set; get; } = string.Empty;
+
+    public string ImageFileName { set; get; } = string.Empty;
 }
+
 
