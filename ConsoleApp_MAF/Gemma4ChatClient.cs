@@ -129,19 +129,12 @@ namespace ConsoleApp_MAF
                 var prompt_user = "";
                 if (lastmsg.Role == ChatRole.Tool)
                 {
-                    foreach(var oo in lastmsg.Contents)
-                    {
-                        if (oo is TextContent tc)
-                        {
-                            //strb.Append(tc.Text);
-                        }
-                    }
                     foreach (var content in lastmsg.Contents.OfType<FunctionResultContent>())
                     {
                         if (content.Result is JsonElement jsonResult)
-                        {
-                            var toolresp = jsonResult.Deserialize<ToolResponse>(jsonoptions);
-                            if(!string.IsNullOrEmpty(toolresp?.ImageFileName))
+                        {                            
+                            var toolresp = JsonSerializer.Deserialize<ToolResponse>(jsonResult);
+                            if (!string.IsNullOrEmpty(toolresp?.ImageFileName))
                             {
                                 if(this.m_MtmdWeights == null)
                                 {
@@ -150,9 +143,11 @@ namespace ConsoleApp_MAF
                                 }
                                 else if(File.Exists(toolresp.ImageFileName))
                                 {
-                                    this.m_Executor.Embeds.Add(this.m_MtmdWeights.LoadMedia(toolresp.ImageFileName));
+                                    var vv = await File.ReadAllBytesAsync(toolresp.ImageFileName);
+                                    this.m_Executor.Embeds.Add(this.m_MtmdWeights.LoadMedia(vv));
+                                    prompts.Add("");
                                 }
-                                toolresp.ImageFileName = "";
+                                toolresp.ImageFileName = null;
                                 strb.Append($"<|tool_response>{JsonSerializer.Serialize(toolresp, jsonoptions)}<tool_response|>");
                                 continue;
                             }
@@ -177,7 +172,7 @@ namespace ConsoleApp_MAF
                         }
                         else if(this.m_MtmdWeights != null && oo is DataContent dc)
                         {
-                            //m_Executor.Embeds.Add(m_MtmdWeights.LoadMedia(dc.Data.Span));
+                            m_Executor.Embeds.Add(m_MtmdWeights.LoadMedia(dc.Data.Span));
                         }
                     }
                     strb.Append("\n<turn|>\n<|turn>model");
@@ -287,6 +282,12 @@ namespace ConsoleApp_MAF
 
 
             response ??= new(new ChatMessage(ChatRole.Assistant, strb.ToString()));
+            
+            foreach(var oo in this.m_Executor.Embeds)
+            {
+                oo.Dispose();
+            }
+            this.m_Executor.Embeds.Clear();
             return response;
         }
 

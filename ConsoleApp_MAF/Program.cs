@@ -17,25 +17,6 @@ string m_ModelPath = @"..\..\..\..\gguf_gemma4\gemma-4-E2B-it-Q4_K_M.gguf";
 string m_MmProjPath = @"..\..\..\..\gguf_gemma4\mmproj-gemma-4-E2B-it-Q8_0.gguf";
 
 
-try
-{
-    var fff = "{\"dir_path\":\"C:\\Users\\oven4\\OneDrive\\桌面\"}";
-    IDictionary<string, object?>? arguments = null;
-    if (!string.IsNullOrEmpty(fff))
-    {
-        arguments = JsonSerializer.Deserialize<Dictionary<string, object?>>(fff, new JsonSerializerOptions
-        {
-            Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping
-        });
-    }
-}
-catch(Exception ee)
-{
-
-}
-
-
-
 //using var codeAct = new HyperlightCodeActProvider(HyperlightCodeActProviderOptions.CreateForWasm(guestPath));
 OpenMeteo om = new();
 ComputerInfo info = new();
@@ -55,7 +36,10 @@ var tools = new AIFunction[]
 
 var option = new ChatOptions()
 {
-    Instructions = "你是個Windows助理,所有回答要有禮貌以及使用繁體中文",
+    Instructions = $"""
+    你是個Windows助理,所有回答要有禮貌以及使用繁體中文
+    桌面的路徑是{Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory)}
+    """,
     Tools = tools,
 };
 
@@ -67,13 +51,13 @@ var funcclient = gemma4client.AsBuilder().UseFunctionInvocation().Build();
 
 
 //var aaresp = await funcclient.GetResponseAsync("現在的位置的天氣?", option);
-//var cm = new ChatMessage(ChatRole.User,
-//    [
-//    await DataContent.LoadFromAsync("a.jpg"),
-//        new TextContent("用中文描述這張圖片"),
-        
-//    ]);
-//var aaresp = await funcclient.GetResponseAsync(cm, option);
+var cm = new ChatMessage(ChatRole.User,
+    [
+    await DataContent.LoadFromAsync("a.jpg"),
+        new TextContent("用中文描述這張圖片"),
+
+    ]);
+//var aaresp1 = await funcclient.GetResponseAsync(cm, option);
 
 
 var agent = funcclient.AsAIAgent(new ChatClientAgentOptions()
@@ -87,8 +71,10 @@ var session = await agent.CreateSessionAsync();
 
 while(true)
 {
+    Console.Write("User:");
     var question = Console.ReadLine();
     var runresp = await agent.RunAsync(question);
+    Console.Write("Assistant:");
     Console.WriteLine(runresp.Text);
 }
 //https://github.com/microsoft/agent-framework/tree/main
@@ -136,11 +122,14 @@ public class IpApiResponse
 
 public class ToolResponse
 {
+    [JsonPropertyName("isFail")]
     public bool? IsFail => string.IsNullOrEmpty(FailMessgae)?null:true;
+    [JsonPropertyName("failMessage")]
     public string? FailMessgae { set; get; } = null;
+    [JsonPropertyName("data")]
     public string Data { set; get; } = string.Empty;
-
-    public string ImageFileName { set; get; } = string.Empty;
+    [JsonPropertyName("imageFileName")]
+    public string? ImageFileName { set; get; } = null;
 }
 
 

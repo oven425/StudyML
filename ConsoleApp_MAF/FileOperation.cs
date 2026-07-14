@@ -38,7 +38,7 @@ namespace ConsoleApp_MAF
                 if(File.Exists(filename))
                 {
                     resp.ImageFileName = filename;
-                    resp.Data = "圖片已經載入";
+                    resp.Data = "圖片已經載入,開始描述";
                 }
                 else
                 {
