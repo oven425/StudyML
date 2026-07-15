@@ -2,6 +2,7 @@
 using LLama;
 using LLama.Common;
 using LLama.Native;
+using Microsoft.Agents.AI;
 using Microsoft.Extensions.AI;
 using System;
 using System.Collections.Generic;
@@ -22,6 +23,7 @@ namespace ConsoleApp_MAF
         LLamaContext? m_Context;
         InteractiveExecutor? m_Executor;
         InferenceParams? m_InferenceParams;
+        InferenceParams? m_InferenceParams_Zero;
         MtmdWeights? m_MtmdWeights;
         MtmdContextParams? m_MtmdContextParams;
         public void Dispose()
@@ -105,7 +107,11 @@ namespace ConsoleApp_MAF
                     MaxTokens = 8192,
                     AntiPrompts = ["<turn|>"]
                 };
-
+                this.m_InferenceParams_Zero = new InferenceParams()
+                {
+                    MaxTokens = 0,
+                    AntiPrompts = ["<turn|>"]
+                };
 
             }
         }
@@ -114,19 +120,24 @@ namespace ConsoleApp_MAF
             Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
             WriteIndented = false
         };
+        UsageDetails? m_UsageDetails;
         string m_SystemPrompt = "";
         bool m_IsFirst = true;
         async public Task<ChatResponse> GetResponseAsync(IEnumerable<ChatMessage> messages, ChatOptions? options = null, CancellationToken cancellationToken = default)
         {
 
             await Init(options);
+            
             if (m_Executor is null) return new ChatResponse();
+            m_UsageDetails ??= new UsageDetails()
+            {
+                TotalTokenCount = 0,
+            };
             List<string> prompts = [];
             var strb = new StringBuilder();
             var lastmsg = messages.LastOrDefault();
             if (lastmsg != null)
             {
-                var prompt_user = "";
                 if (lastmsg.Role == ChatRole.Tool)
                 {
                     foreach (var content in lastmsg.Contents.OfType<FunctionResultContent>())
@@ -157,7 +168,6 @@ namespace ConsoleApp_MAF
 
 
                     }
-                    //prompt_user = strb.ToString();
                     prompts.Add(strb.ToString());
                     strb.Clear();
                 }
@@ -178,7 +188,6 @@ namespace ConsoleApp_MAF
                     strb.Append("\n<turn|>\n<|turn>model");
                     if (m_IsFirst)
                     {
-                        prompt_user = $"{m_SystemPrompt}\n{strb}";
                         if(m_Executor.Embeds.Count == 0)
                         {
                             prompts.Add($"{m_SystemPrompt}\n{strb}");
@@ -194,54 +203,24 @@ namespace ConsoleApp_MAF
                     {
                         prompts.Add(strb.ToString());
                     }
-                    //prompts.Add("""
-                    //<|turn>system
-                    //你是個Windows助理,所有回答要有禮貌以及使用繁體中文
-                    //<turn|>
-                    //""");
-                    //prompts.Add("""
-                    //<|turn>user
-                    //用中文描述這張圖片
-                    //<turn|>
-                    //<|turn>model
-                    //""");
                 }
                 foreach(var oo in prompts)
                 {
+                    var timingsBefore = this.m_Context.NativeHandle.GetTimings();
+                    int tokensBefore = timingsBefore.TokensEvaluated;
                     strb.Clear();
                     System.Diagnostics.Trace.WriteLine(oo);
-                    await foreach (var token in this.m_Executor.InferAsync(oo, this.m_InferenceParams))
+                    var param = string.IsNullOrEmpty(oo) ? this.m_InferenceParams_Zero : this.m_InferenceParams;
+                    await foreach (var token in this.m_Executor.InferAsync(oo, this.m_InferenceParams, cancellationToken))
                     {
                         strb.Append(token);
                     }
+                    var timingsAfter = this.m_Context.NativeHandle.GetTimings();
+                    int tokensAfter = timingsAfter.TokensEvaluated;
+                    m_UsageDetails.TotalTokenCount = this.m_UsageDetails.TotalTokenCount + tokensAfter;
+                    System.Diagnostics.Trace.WriteLine($"token:{tokensBefore}->{tokensAfter}");
                     System.Diagnostics.Trace.WriteLine(strb.ToString());
                 }
-                //strb.Clear();
-                //prompt_user = """
-                //    <|turn>system
-                //    你是個Windows助理,所有回答要有禮貌以及使用繁體中文
-                //    <turn|>
-                //    """;
-                //System.Diagnostics.Trace.WriteLine(prompt_user);
-                //await foreach (var token in this.m_Executor.InferAsync(prompt_user, this.m_InferenceParams))
-                //{
-                //    strb.Append(token);
-                //}
-                //System.Diagnostics.Trace.WriteLine(strb.ToString());
-
-                //strb.Clear();
-                //prompt_user = """
-                //    <|turn>user
-                //    用中文描述這張圖片
-                //    <turn|>
-                //    <|turn>model
-                //    """;
-                //System.Diagnostics.Trace.WriteLine(prompt_user);
-                //await foreach (var token in this.m_Executor.InferAsync(prompt_user, this.m_InferenceParams))
-                //{
-                //    strb.Append(token);
-                //}
-                //System.Diagnostics.Trace.WriteLine(strb.ToString());
             }
             ChatResponse? response = null;
             string toolCallPattern = @"<\|tool_call>(.*?)<tool_call\|>";
@@ -276,18 +255,14 @@ namespace ConsoleApp_MAF
                 response = new ChatResponse(assistantMsg)
                 {
                     FinishReason = ChatFinishReason.ToolCalls
+
                 };
 
             }
 
 
             response ??= new(new ChatMessage(ChatRole.Assistant, strb.ToString()));
-            
-            foreach(var oo in this.m_Executor.Embeds)
-            {
-                oo.Dispose();
-            }
-            this.m_Executor.Embeds.Clear();
+            response.Usage = this.m_UsageDetails;
             return response;
         }
 

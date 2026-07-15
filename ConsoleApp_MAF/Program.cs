@@ -75,6 +75,7 @@ while(true)
     var question = Console.ReadLine();
     var runresp = await agent.RunAsync(question);
     Console.Write("Assistant:");
+    Console.WriteLine($"{runresp.Usage?.TotalTokenCount}");
     Console.WriteLine(runresp.Text);
 }
 //https://github.com/microsoft/agent-framework/tree/main
