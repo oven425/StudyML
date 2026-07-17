@@ -29,6 +29,7 @@ var tools = new AIFunction[]
     AIFunctionFactory.Create(info.list_directory),
     AIFunctionFactory.Create(fs.ReadTxt),
     AIFunctionFactory.Create(fs.ReadImage),
+    AIFunctionFactory.Create(fs.GetFullPath),
     AIFunctionFactory.Create(get_currentlocation),
     AIFunctionFactory.Create(om.GetCurrent)
     
@@ -54,8 +55,8 @@ var funcclient = gemma4client.AsBuilder().UseFunctionInvocation().Build();
 var cm = new ChatMessage(ChatRole.User,
     [
     await DataContent.LoadFromAsync("a.jpg"),
-        new TextContent("用中文描述這張圖片"),
-
+        //new TextContent("用中文描述這張圖片"),
+        new TextContent("這張圖片裡面有什麼東西?"),
     ]);
 //var aaresp1 = await funcclient.GetResponseAsync(cm, option);
 

@@ -17,7 +17,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "App_gguf", "App_gguf\App_gg
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ConsoleApp_MAF", "ConsoleApp_MAF\ConsoleApp_MAF.csproj", "{69D46D99-C563-4103-A2F5-B7BDAB7D02E7}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ConsoleApp_Telegram", "ConsoleApp_Telegram\ConsoleApp_Telegram.csproj", "{3F6A5317-CC34-4750-9EE5-50E0AF0F5AB8}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ConsoleApp_TTS", "ConsoleApp_TTS\ConsoleApp_TTS.csproj", "{D3575B47-691B-4E5C-A60F-4A1B17243273}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -55,10 +55,10 @@ Global
 		{69D46D99-C563-4103-A2F5-B7BDAB7D02E7}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{69D46D99-C563-4103-A2F5-B7BDAB7D02E7}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{69D46D99-C563-4103-A2F5-B7BDAB7D02E7}.Release|Any CPU.Build.0 = Release|Any CPU
-		{3F6A5317-CC34-4750-9EE5-50E0AF0F5AB8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{3F6A5317-CC34-4750-9EE5-50E0AF0F5AB8}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{3F6A5317-CC34-4750-9EE5-50E0AF0F5AB8}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{3F6A5317-CC34-4750-9EE5-50E0AF0F5AB8}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D3575B47-691B-4E5C-A60F-4A1B17243273}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D3575B47-691B-4E5C-A60F-4A1B17243273}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D3575B47-691B-4E5C-A60F-4A1B17243273}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D3575B47-691B-4E5C-A60F-4A1B17243273}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

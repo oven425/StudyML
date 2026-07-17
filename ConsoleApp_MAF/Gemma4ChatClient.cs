@@ -281,7 +281,12 @@ namespace ConsoleApp_MAF
             string cleanPattern = @"(?<key>\w+)\s*:\s*<\|""\|>(?<val>.*?)<\|""\|>";
             string standardizedArgs = Regex.Replace(argsContent, cleanPattern, @"""${key}"":""${val}""");
             //standardizedArgs = Regex.Replace(standardizedArgs, @"\\(?![""\\/bfnrt]|u[0-9a-fA-F]{4})", @"\\");
-            standardizedArgs = Regex.Replace(standardizedArgs, @"(?<!\\)\\(?![\\""/bfnrtu])", @"\\");
+            //standardizedArgs = Regex.Replace(standardizedArgs, @"(?<!\\)\\(?![\\""/bfnrtu])", @"\\");
+//            <| tool_call > call:GetCurrent{
+//                "Long": 121.6577,
+//  "Lat": 25.0696
+//}< tool_call |>
+
             string finalJson = $"{{{standardizedArgs}}}";
             return (action, finalJson);
         }

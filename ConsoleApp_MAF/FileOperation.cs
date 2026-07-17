@@ -13,6 +13,20 @@ namespace ConsoleApp_MAF
 {
     public class FileOperation
     {
+        [Description("取得檔案的決定路徑")]
+        public ToolResponse GetFullPath([Description("檔案的路徑，例如a.jpg")]string filename)
+        {
+            var resp = new ToolResponse();
+            try
+            {
+                resp.Data = System.IO.Path.GetFullPath(filename);
+            }
+            catch (Exception ee)
+            {
+                resp.FailMessgae = ee.Message;
+            }
+            return resp;
+        }
         [Description("讀取本機電腦中指定路徑的文字類型的檔案(*.csv,*.txt.....")]
         async public Task<ToolResponse> ReadTxt([Description("檔案的絕對路徑或相對路徑，例如 C:\\Users\\user\\Desktop\\config.json 或 ./data.csv")]string filename)
         {

@@ -35,6 +35,7 @@ bld/
 onnx_phi4
 onnx_whisper_tiny
 gguf_gemma4
+tts
 
 # Visual Studio 2015/2017 cache/options directory
 .vs/
