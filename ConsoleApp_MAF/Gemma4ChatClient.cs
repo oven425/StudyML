@@ -40,7 +40,7 @@ namespace ConsoleApp_MAF
                 var strb_tool = new StringBuilder();
                 if (options != null)
                 {
-                    foreach (var oo in options.Tools)
+                    foreach (var oo in options.Tools ?? [])
                     {
                         var str_pps = "";
                         if (oo is AIFunction aifun)
@@ -125,7 +125,10 @@ namespace ConsoleApp_MAF
         bool m_IsFirst = true;
         async public Task<ChatResponse> GetResponseAsync(IEnumerable<ChatMessage> messages, ChatOptions? options = null, CancellationToken cancellationToken = default)
         {
+            var runContext = AIAgent.CurrentRunContext;
+            
 
+            AIContext? aiContext = null;
             await Init(options);
             
             if (m_Executor is null) return new ChatResponse();

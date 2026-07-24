@@ -4,7 +4,10 @@ using LLama;
 using LLama.Common;
 using Microsoft.Agents.AI;
 using Microsoft.Extensions.AI;
+using OpenAI;
+using System.ClientModel;
 using System.ComponentModel;
+using System.Net;
 using System.Reflection;
 using System.Text;
 using System.Text.Encodings.Web;
@@ -42,12 +45,18 @@ var option = new ChatOptions()
     桌面的路徑是{Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory)}
     """,
     Tools = tools,
+
 };
+
+var agentSkillsProvider = new AgentSkillsProvider(["./skills"]);
 
 
 var gemma4client = new Gemma4ChatClient(m_ModelPath, m_MmProjPath);
 
-var funcclient = gemma4client.AsBuilder().UseFunctionInvocation().Build();
+var funcclient = gemma4client.AsBuilder()
+    .UseFunctionInvocation()
+    .UseAIContextProviders(agentSkillsProvider)
+    .Build();
 
 
 
@@ -59,16 +68,23 @@ var cm = new ChatMessage(ChatRole.User,
         new TextContent("這張圖片裡面有什麼東西?"),
     ]);
 //var aaresp1 = await funcclient.GetResponseAsync(cm, option);
-
-
+var trackingContextProvider = new TrackingContextProvider();
+var agent1 = new OpenAIClient(
+        credential: new ApiKeyCredential(key: "apiKey"),
+        options: new OpenAIClientOptions { Endpoint = new Uri("htts://127.0.0.1:1111") })
+    .GetChatClient(model: "model")
+    .AsIChatClient()
+    .AsAIAgent(options: new ChatClientAgentOptions { AIContextProviders = [agentSkillsProvider] });
 var agent = funcclient.AsAIAgent(new ChatClientAgentOptions()
 {
     Name ="assiant",
     ChatOptions = option,
+    UseProvidedChatClientAsIs=true,
     //AIContextProviders = [new TextSearchProvider()]
     //AIContextProviders = [new TodoProvider()]
+    AIContextProviders = [agentSkillsProvider, trackingContextProvider]
 });
-var session = await agent.CreateSessionAsync();
+
 
 while(true)
 {
@@ -132,6 +148,35 @@ public class ToolResponse
     public string Data { set; get; } = string.Empty;
     [JsonPropertyName("imageFileName")]
     public string? ImageFileName { set; get; } = null;
+}
+
+class TrackingContextProvider : AIContextProvider
+{
+    protected override ValueTask<AIContext> InvokingCoreAsync(InvokingContext context, CancellationToken cancellationToken = default)
+    {
+        var aiContext = context.AIContext!;
+        Console.WriteLine($"{new string('-', 50)}Tools{new string('-', 50)}");
+        foreach (var tool in aiContext.Tools ?? [])
+        {
+            if (tool is AIFunction function)
+            {
+                Console.WriteLine($"""
+                    **{function.Name}**
+                    Description: {function.Description}
+                    JsonSchema: 
+                    {JsonSerializer.Serialize(function.JsonSchema, new JsonSerializerOptions { WriteIndented = true })}
+
+                    """);
+            }
+        }
+
+        Console.WriteLine($"""
+            {new string('-', 50)}Instructions{new string('-', 50)}
+                {aiContext.Instructions}
+            """);
+
+        return base.InvokingCoreAsync(context, cancellationToken);
+    }
 }
 
 
