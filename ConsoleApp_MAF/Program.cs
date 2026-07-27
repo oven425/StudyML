@@ -44,18 +44,24 @@ var option = new ChatOptions()
     你是個Windows助理,所有回答要有禮貌以及使用繁體中文
     桌面的路徑是{Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory)}
     """,
-    Tools = tools,
+    //Tools = tools,
 
 };
 
-var agentSkillsProvider = new AgentSkillsProvider(["./skills"]);
+
 
 
 var gemma4client = new Gemma4ChatClient(m_ModelPath, m_MmProjPath);
 
+
+var skillsDir = Path.Combine(Directory.GetCurrentDirectory(), "skills");
+var files = new AgentFileSkillsSource(["./skills"]);
+var aa = await files.GetSkillsAsync(null);
+var agentSkillsProvider = new AgentSkillsProvider(skillsDir);
+
 var funcclient = gemma4client.AsBuilder()
-    .UseFunctionInvocation()
     .UseAIContextProviders(agentSkillsProvider)
+    .UseFunctionInvocation()
     .Build();
 
 
@@ -69,19 +75,29 @@ var cm = new ChatMessage(ChatRole.User,
     ]);
 //var aaresp1 = await funcclient.GetResponseAsync(cm, option);
 var trackingContextProvider = new TrackingContextProvider();
-var agent1 = new OpenAIClient(
-        credential: new ApiKeyCredential(key: "apiKey"),
-        options: new OpenAIClientOptions { Endpoint = new Uri("htts://127.0.0.1:1111") })
-    .GetChatClient(model: "model")
-    .AsIChatClient()
-    .AsAIAgent(options: new ChatClientAgentOptions { AIContextProviders = [agentSkillsProvider] });
+
+
+
+//var skill = new AgentInlineSkill(
+//        name: "unit-converter",
+//        description: "Converts between measurement units.",
+//        instructions: """
+//            Use this skill to convert values between metric and imperial units.
+//            Refer to the conversion-table resource for supported unit pairs.
+//            Run the convert script to perform conversions.
+//            """
+//    )
+//    .AddResource("kg=2.205lb, m=3.281ft, L=0.264gal", "conversion-table", "Supported unit pairs");
+
+//var source = new AgentInMemorySkillsSource([skill]);
+
+//var provider = new AgentSkillsProvider(source);
+
 var agent = funcclient.AsAIAgent(new ChatClientAgentOptions()
 {
     Name ="assiant",
     ChatOptions = option,
     UseProvidedChatClientAsIs=true,
-    //AIContextProviders = [new TextSearchProvider()]
-    //AIContextProviders = [new TodoProvider()]
     AIContextProviders = [agentSkillsProvider, trackingContextProvider]
 });
 
@@ -93,11 +109,26 @@ while(true)
     var runresp = await agent.RunAsync(question);
     Console.Write("Assistant:");
     Console.WriteLine($"{runresp.Usage?.TotalTokenCount}");
-    Console.WriteLine(runresp.Text);
+    var functionApprovalRequests = runresp.Messages
+    .SelectMany(x => x.Contents)
+    .OfType<ToolApprovalRequestContent>()
+    .ToList();
+    if(functionApprovalRequests.Count >0)
+    {
+        foreach (var oo in functionApprovalRequests)
+        {
+            var approvalMessage = new ChatMessage(ChatRole.User, [oo.CreateResponse(true)]);
+            Console.WriteLine(await agent.RunAsync(approvalMessage));
+        }
+    }
+    else
+    {
+        Console.WriteLine(runresp.Text);
+    }
+    
 }
 //https://github.com/microsoft/agent-framework/tree/main
 var resp_agent = await agent.RunAsync("現在幾點?");
-
 
 [Description("取得現在使用者的城市和經緯度")]
 async Task<ToolResponse> get_currentlocation()

@@ -42,8 +42,17 @@ namespace ConsoleApp_MAF
                 {
                     foreach (var oo in options.Tools ?? [])
                     {
+                        var name = oo.GetType().Name;
                         var str_pps = "";
-                        if (oo is AIFunction aifun)
+                        if(oo is ApprovalRequiredAIFunction apfun)
+                        {
+                            str_pps = JsonSerializer.Serialize(apfun.JsonSchema, new JsonSerializerOptions()
+                            {
+                                WriteIndented = true,
+                                Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+                            });
+                        }
+                        else if (oo is AIFunction aifun)
                         {
 
                             str_pps = JsonSerializer.Serialize(aifun.JsonSchema, new JsonSerializerOptions()
@@ -125,10 +134,7 @@ namespace ConsoleApp_MAF
         bool m_IsFirst = true;
         async public Task<ChatResponse> GetResponseAsync(IEnumerable<ChatMessage> messages, ChatOptions? options = null, CancellationToken cancellationToken = default)
         {
-            var runContext = AIAgent.CurrentRunContext;
-            
 
-            AIContext? aiContext = null;
             await Init(options);
             
             if (m_Executor is null) return new ChatResponse();
