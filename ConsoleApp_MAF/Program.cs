@@ -55,12 +55,17 @@ var gemma4client = new Gemma4ChatClient(m_ModelPath, m_MmProjPath);
 
 
 var skillsDir = Path.Combine(Directory.GetCurrentDirectory(), "skills");
+var fileOptions = new AgentFileSkillsSourceOptions
+{
+    ResourceFilter = context => false,  // 排除所有 resources
+    ScriptFilter = context => false,    // 排除所有 scripts
+};
 var files = new AgentFileSkillsSource(["./skills"]);
 var aa = await files.GetSkillsAsync(null);
-var agentSkillsProvider = new AgentSkillsProvider(skillsDir);
+
+var agentSkillsProvider = new AgentSkillsProvider(skillsDir, fileOptions: fileOptions);
 
 var funcclient = gemma4client.AsBuilder()
-    .UseAIContextProviders(agentSkillsProvider)
     .UseFunctionInvocation()
     .Build();
 

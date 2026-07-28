@@ -152,26 +152,41 @@ namespace ConsoleApp_MAF
                     foreach (var content in lastmsg.Contents.OfType<FunctionResultContent>())
                     {
                         if (content.Result is JsonElement jsonResult)
-                        {                            
-                            var toolresp = JsonSerializer.Deserialize<ToolResponse>(jsonResult);
-                            if (!string.IsNullOrEmpty(toolresp?.ImageFileName))
+                        {
+                            
+                            if(jsonResult.ValueKind == JsonValueKind.String)
                             {
-                                if(this.m_MtmdWeights == null)
-                                {
-                                    strb.Append($"<|tool_response>不支援多模態<tool_response|>");
-                                    continue;
-                                }
-                                else if(File.Exists(toolresp.ImageFileName))
-                                {
-                                    var vv = await File.ReadAllBytesAsync(toolresp.ImageFileName);
-                                    this.m_Executor.Embeds.Add(this.m_MtmdWeights.LoadMedia(vv));
-                                    prompts.Add("");
-                                }
-                                toolresp.ImageFileName = null;
-                                strb.Append($"<|tool_response>{JsonSerializer.Serialize(toolresp, jsonoptions)}<tool_response|>");
+                                var kk = jsonResult.ValueKind;
+                                var kk_str = jsonResult.GetString()
+                                    .Replace("<available_resources />", "")
+                                    .Replace("<available_scripts />", "")
+                                    .TrimEnd();
+                                strb.Append($"<|tool_response>{kk_str}<tool_response|>");
                                 continue;
                             }
-                            strb.Append($"<|tool_response>{JsonSerializer.Serialize(content.Result, jsonoptions)}<tool_response|>");
+                            else
+                            {
+                                var toolresp = JsonSerializer.Deserialize<ToolResponse>(jsonResult);
+                                if (!string.IsNullOrEmpty(toolresp?.ImageFileName))
+                                {
+                                    if (this.m_MtmdWeights == null)
+                                    {
+                                        strb.Append($"<|tool_response>不支援多模態<tool_response|>");
+                                        continue;
+                                    }
+                                    else if (File.Exists(toolresp.ImageFileName))
+                                    {
+                                        var vv = await File.ReadAllBytesAsync(toolresp.ImageFileName);
+                                        this.m_Executor.Embeds.Add(this.m_MtmdWeights.LoadMedia(vv));
+                                        prompts.Add("");
+                                    }
+                                    toolresp.ImageFileName = null;
+                                    strb.Append($"<|tool_response>{JsonSerializer.Serialize(toolresp, jsonoptions)}<tool_response|>");
+                                    continue;
+                                }
+                                strb.Append($"<|tool_response>{JsonSerializer.Serialize(content.Result, jsonoptions)}<tool_response|>");
+                            }
+                            
 
                         }
 
