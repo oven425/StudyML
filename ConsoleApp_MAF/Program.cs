@@ -15,6 +15,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
 Console.OutputEncoding = System.Text.Encoding.UTF8;
+Console.InputEncoding = System.Text.Encoding.UTF8;
 Console.WriteLine("Hello, World!");
 string m_ModelPath = @"..\..\..\..\gguf_gemma4\gemma-4-E2B-it-Q4_K_M.gguf";
 string m_MmProjPath = @"..\..\..\..\gguf_gemma4\mmproj-gemma-4-E2B-it-Q8_0.gguf";
@@ -47,8 +48,6 @@ var option = new ChatOptions()
     //Tools = tools,
 
 };
-
-
 
 
 var gemma4client = new Gemma4ChatClient(m_ModelPath, m_MmProjPath);
@@ -132,6 +131,69 @@ while(true)
     }
     
 }
+
+async Task RunCopilotAsync()
+{
+    await using var copilotClient = new GitHub.Copilot.CopilotClient();
+    await copilotClient.StartAsync();
+
+#pragma warning disable GHCP001
+    var sessionConfig = new GitHub.Copilot.SessionConfig
+    {
+        Tools = tools,
+        SystemMessage = new GitHub.Copilot.SystemMessageConfig
+        {
+            Content = $"""
+                你是個 Windows 助理，所有回答要有禮貌以及使用繁體中文。
+                桌面的路徑是 {Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory)}
+                """
+        },
+        OnPermissionRequest = (request, _) =>
+        {
+            Console.WriteLine($"Copilot 權限請求：{JsonSerializer.Serialize(request, new JsonSerializerOptions()
+            {
+                Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+            })}");
+            Console.Write("允許這次操作嗎？(y/N): ");
+
+            var approved = Console.ReadLine()?.Equals("y", StringComparison.OrdinalIgnoreCase) == true;
+            return Task.FromResult<GitHub.Copilot.Rpc.PermissionDecision>(
+                approved
+                    ? new GitHub.Copilot.Rpc.PermissionDecisionApproveOnce()
+                    : new GitHub.Copilot.Rpc.PermissionDecisionReject());
+        }
+    };
+#pragma warning restore GHCP001
+    Console.WriteLine($"Copilot 模型：{sessionConfig.Model ?? "使用服務預設模型"}");
+    Console.WriteLine($"思考強度：{sessionConfig.ReasoningEffort ?? "使用模型預設強度"}");
+    AIAgent copilotAgent = GitHub.Copilot.CopilotClientExtensions.AsAIAgent(
+        copilotClient,
+        sessionConfig: sessionConfig);
+
+    AgentSession session = await copilotAgent.CreateSessionAsync();
+
+    while (true)
+    {
+        Console.Write("Copilot User: ");
+        string? question = Console.ReadLine();
+
+        if (string.IsNullOrWhiteSpace(question) ||
+            question.Equals("exit", StringComparison.OrdinalIgnoreCase))
+        {
+            break;
+        }
+
+        AgentResponse response = await copilotAgent.RunAsync(question, session);
+        Console.WriteLine($"Copilot Assistant: {response}");
+    }
+}
+
+
+
+
+//
+
+
 //https://github.com/microsoft/agent-framework/tree/main
 var resp_agent = await agent.RunAsync("現在幾點?");
 
@@ -214,5 +276,6 @@ class TrackingContextProvider : AIContextProvider
         return base.InvokingCoreAsync(context, cancellationToken);
     }
 }
+
 
 
