@@ -12,6 +12,7 @@
     <PackageReference Include="LLamaSharp.Backend.Cpu" Version="0.27.0" />
     <PackageReference Include="Microsoft.Agents.AI" Version="1.15.0" />
     <PackageReference Include="Microsoft.Agents.AI.GitHub.Copilot" Version="1.15.0-rc1" />
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.10" />
     <PackageReference Include="Microsoft.Extensions.AI.OpenAI" Version="10.7.0" />
   </ItemGroup>
 

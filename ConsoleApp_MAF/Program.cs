@@ -25,6 +25,12 @@ string m_MmProjPath = @"..\..\..\..\gguf_gemma4\mmproj-gemma-4-E2B-it-Q8_0.gguf"
 OpenMeteo om = new();
 ComputerInfo info = new();
 FileOperation fs = new();
+DataBase sqlitedb = new();
+//var tables = await sqlitedb.ListTables("northwind.db");
+//foreach (var table in tables.Data)
+//{
+//    var sss = await sqlitedb.GetTableSchema("northwind.db", table);
+//}
 var tools = new AIFunction[]
 {
     AIFunctionFactory.Create(info.GetCurrentDateTime),
@@ -35,7 +41,10 @@ var tools = new AIFunction[]
     AIFunctionFactory.Create(fs.ReadImage),
     AIFunctionFactory.Create(fs.GetFullPath),
     AIFunctionFactory.Create(get_currentlocation),
-    AIFunctionFactory.Create(om.GetCurrent)
+    AIFunctionFactory.Create(om.GetCurrent),
+    AIFunctionFactory.Create(sqlitedb.ListTables),
+    AIFunctionFactory.Create(sqlitedb.GetTableSchema),
+    AIFunctionFactory.Create(sqlitedb.Query)
     
 };
 
@@ -43,9 +52,10 @@ var option = new ChatOptions()
 {
     Instructions = $"""
     你是個Windows助理,所有回答要有禮貌以及使用繁體中文
+    現在的路徑是{AppDomain.CurrentDomain.BaseDirectory}
     桌面的路徑是{Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory)}
     """,
-    //Tools = tools,
+    Tools = tools,
 
 };
 
@@ -59,8 +69,6 @@ var fileOptions = new AgentFileSkillsSourceOptions
     ResourceFilter = context => false,  // 排除所有 resources
     ScriptFilter = context => false,    // 排除所有 scripts
 };
-var files = new AgentFileSkillsSource(["./skills"]);
-var aa = await files.GetSkillsAsync(null);
 
 var agentSkillsProvider = new AgentSkillsProvider(skillsDir, fileOptions: fileOptions);
 
@@ -235,7 +243,10 @@ public class IpApiResponse
     public double Lon { get; set; }
 }
 
-
+public class ToolResponse<T>: ToolResponse
+{
+    public T? Data { set; get; }
+}
 public class ToolResponse
 {
     [JsonPropertyName("isFail")]
