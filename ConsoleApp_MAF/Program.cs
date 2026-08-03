@@ -1,4 +1,5 @@
 ﻿// See https://aka.ms/new-console-template for more information
+using AgentFrameworkToolkit.Tools;
 using ConsoleApp_MAF;
 using LLama;
 using LLama.Common;
@@ -26,6 +27,8 @@ OpenMeteo om = new();
 ComputerInfo info = new();
 FileOperation fs = new();
 DataBase sqlitedb = new();
+AIToolsFactory toolsFactory = new();
+toolsFactory.GetTimeTools();
 //var tables = await sqlitedb.ListTables("northwind.db");
 //foreach (var table in tables.Data)
 //{
@@ -33,18 +36,18 @@ DataBase sqlitedb = new();
 //}
 var tools = new AIFunction[]
 {
-    AIFunctionFactory.Create(info.GetCurrentDateTime),
-    AIFunctionFactory.Create(info.GetCurrentUser),
-    AIFunctionFactory.Create(info.GetFolder),
-    AIFunctionFactory.Create(info.list_directory),
-    AIFunctionFactory.Create(fs.ReadTxt),
-    AIFunctionFactory.Create(fs.ReadImage),
-    AIFunctionFactory.Create(fs.GetFullPath),
-    AIFunctionFactory.Create(get_currentlocation),
-    AIFunctionFactory.Create(om.GetCurrent),
+    //AIFunctionFactory.Create(info.GetCurrentDateTime),
+    //AIFunctionFactory.Create(info.GetCurrentUser),
+    //AIFunctionFactory.Create(info.GetFolder),
+    //AIFunctionFactory.Create(info.list_directory),
+    //AIFunctionFactory.Create(fs.ReadTxt),
+    //AIFunctionFactory.Create(fs.ReadImage),
+    //AIFunctionFactory.Create(fs.GetFullPath),
+    //AIFunctionFactory.Create(get_currentlocation),
+    //AIFunctionFactory.Create(om.GetCurrent),
     AIFunctionFactory.Create(sqlitedb.ListTables),
     AIFunctionFactory.Create(sqlitedb.GetTableSchema),
-    AIFunctionFactory.Create(sqlitedb.Query)
+    //AIFunctionFactory.Create(sqlitedb.Query)
     
 };
 
@@ -55,7 +58,12 @@ var option = new ChatOptions()
     現在的路徑是{AppDomain.CurrentDomain.BaseDirectory}
     桌面的路徑是{Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory)}
     """,
-    Tools = tools,
+    Tools = 
+    [
+        ..tools,
+        //..toolsFactory.GetTimeTools(),
+        //..toolsFactory.GetFileSystemTools()
+    ],
 
 };
 
@@ -110,7 +118,7 @@ var agent = funcclient.AsAIAgent(new ChatClientAgentOptions()
     Name ="assiant",
     ChatOptions = option,
     UseProvidedChatClientAsIs=true,
-    AIContextProviders = [agentSkillsProvider, trackingContextProvider]
+    //AIContextProviders = [agentSkillsProvider, trackingContextProvider]
 });
 
 
@@ -243,10 +251,10 @@ public class IpApiResponse
     public double Lon { get; set; }
 }
 
-public class ToolResponse<T>: ToolResponse
-{
-    public T? Data { set; get; }
-}
+//public class ToolResponse<T>: ToolResponse
+//{
+//    public T? Data { set; get; }
+//}
 public class ToolResponse
 {
     [JsonPropertyName("isFail")]
@@ -257,6 +265,14 @@ public class ToolResponse
     public string Data { set; get; } = string.Empty;
     [JsonPropertyName("imageFileName")]
     public string? ImageFileName { set; get; } = null;
+}
+
+public static class ToolResponseExtension
+{
+    static public string ToJsonString<T>(this T src)
+    {
+        return JsonSerializer.Serialize(src);
+    }
 }
 
 class TrackingContextProvider : AIContextProvider

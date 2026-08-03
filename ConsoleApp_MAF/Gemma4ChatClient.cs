@@ -86,6 +86,7 @@ namespace ConsoleApp_MAF
                 {
                     ContextSize = 8192,
                     GpuLayerCount = 0,
+                    Threads = Environment.ProcessorCount-4
                 };
                 this.m_Weights = await LLamaWeights.LoadFromFileAsync(this.m_Parameters);
                 this.m_Context = this.m_Weights.CreateContext(this.m_Parameters);
@@ -306,11 +307,11 @@ namespace ConsoleApp_MAF
             string standardizedArgs = Regex.Replace(argsContent, cleanPattern, @"""${key}"":""${val}""");
             //standardizedArgs = Regex.Replace(standardizedArgs, @"\\(?![""\\/bfnrt]|u[0-9a-fA-F]{4})", @"\\");
             //standardizedArgs = Regex.Replace(standardizedArgs, @"(?<!\\)\\(?![\\""/bfnrtu])", @"\\");
-//            <| tool_call > call:GetCurrent{
-//                "Long": 121.6577,
-//  "Lat": 25.0696
-//}< tool_call |>
-
+            //            <| tool_call > call:GetCurrent{
+            //                "Long": 121.6577,
+            //  "Lat": 25.0696
+            //}< tool_call |>
+            standardizedArgs = standardizedArgs.Replace(@"\", @"\\");
             string finalJson = $"{{{standardizedArgs}}}";
             return (action, finalJson);
         }
