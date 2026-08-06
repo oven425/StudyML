@@ -232,18 +232,15 @@ namespace ConsoleApp_MAF
                 foreach(var oo in prompts)
                 {
                     var timingsBefore = this.m_Context.NativeHandle.GetTimings();
-                    int tokensBefore = timingsBefore.TokensEvaluated;
                     strb.Clear();
                     System.Diagnostics.Trace.WriteLine(oo);
                     var param = string.IsNullOrEmpty(oo) ? this.m_InferenceParams_Zero : this.m_InferenceParams;
-                    await foreach (var token in this.m_Executor.InferAsync(oo, this.m_InferenceParams, cancellationToken))
+                    await foreach (var token in this.m_Executor.InferAsync(oo, param, cancellationToken))
                     {
                         strb.Append(token);
                     }
                     var timingsAfter = this.m_Context.NativeHandle.GetTimings();
-                    int tokensAfter = timingsAfter.TokensEvaluated;
-                    m_UsageDetails.TotalTokenCount = this.m_UsageDetails.TotalTokenCount + tokensAfter;
-                    System.Diagnostics.Trace.WriteLine($"token:{tokensBefore}->{tokensAfter}");
+                    CalcToken(timingsBefore, timingsAfter);
                     System.Diagnostics.Trace.WriteLine(strb.ToString());
                 }
             }
@@ -290,6 +287,40 @@ namespace ConsoleApp_MAF
             response.Usage = this.m_UsageDetails;
             return response;
         }
+
+
+        void CalcToken(LLamaPerfContextTimings before, LLamaPerfContextTimings after)
+        {
+            m_UsageDetails ??= new UsageDetails();
+
+            var inputTokens = after.PrompTokensEvaluated - before.PrompTokensEvaluated;
+            var outputTokens = after.TokensEvaluated - before.TokensEvaluated;
+            var promptMilliseconds = Math.Max(0L, (long)Math.Round((after.PromptEval - before.PromptEval).TotalMilliseconds));
+            var generationMilliseconds = Math.Max(0L, (long)Math.Round((after.Eval - before.Eval).TotalMilliseconds));
+
+            m_UsageDetails.InputTokenCount = (m_UsageDetails.InputTokenCount ?? 0) + inputTokens;
+            m_UsageDetails.OutputTokenCount = (m_UsageDetails.OutputTokenCount ?? 0) + outputTokens;
+            m_UsageDetails.TotalTokenCount = (m_UsageDetails.InputTokenCount ?? 0) + (m_UsageDetails.OutputTokenCount ?? 0);
+
+            var additionalCounts = m_UsageDetails.AdditionalCounts ??= new();
+            additionalCounts["PromptEvaluationMilliseconds"] = GetAdditionalCount(additionalCounts, "PromptEvaluationMilliseconds") + promptMilliseconds;
+            additionalCounts["GenerationMilliseconds"] = GetAdditionalCount(additionalCounts, "GenerationMilliseconds") + generationMilliseconds;
+            additionalCounts["PromptTokensPerSecondX1000"] = CalculateTokensPerSecondX1000(m_UsageDetails.InputTokenCount ?? 0, additionalCounts["PromptEvaluationMilliseconds"]);
+            additionalCounts["OutputTokensPerSecondX1000"] = CalculateTokensPerSecondX1000(m_UsageDetails.OutputTokenCount ?? 0, additionalCounts["GenerationMilliseconds"]);
+
+            System.Diagnostics.Trace.WriteLine(
+                $"input={inputTokens}, output≈{outputTokens}, " +
+                $"prompt={promptMilliseconds}ms, generation={generationMilliseconds}ms, " +
+                $"output={additionalCounts["OutputTokensPerSecondX1000"] / 1000d:F2} tok/s");
+        }
+
+        static long GetAdditionalCount(AdditionalPropertiesDictionary<long> additionalCounts, string key)
+            => additionalCounts.TryGetValue(key, out var value) ? value : 0;
+
+        static long CalculateTokensPerSecondX1000(long tokenCount, long elapsedMilliseconds)
+            => elapsedMilliseconds > 0
+                ? (long)Math.Round(tokenCount * 1_000_000d / elapsedMilliseconds)
+                : 0;
 
         (string action, string argsContent) NormailiszeCToolCall(string input)
         {
