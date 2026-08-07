@@ -132,58 +132,56 @@ namespace ConsoleApp_MAF
             return resp;
         }
 
-        //[Description("以 SQL 查詢資料（僅允許 SELECT），會回傳 columns 與 rows；可指定 limit/offset")]
-        //public async Task<ToolResponse<Dictionary<string, object>>> Query([Description("資料庫檔案路徑")] string dbPath,
-        //                                                                  [Description("僅允許 SELECT 查詢")] string sql,
-        //                                                                  [Description("最大回傳列數, 預設500")] int maxRows = DEFAULT_MAX_ROWS,
-        //                                                                  CancellationToken cancellation = default)
-        //{
-        //    var resp = new ToolResponse<Dictionary<string, object>>();
-        //    try
-        //    {
-        //        if (!File.Exists(dbPath)) return MakeError<Dictionary<string, object>>("找不到資料庫檔案");
-        //        if (!IsSelectOnly(sql)) return MakeError<Dictionary<string, object>>("僅允許 SELECT 查詢");
+        [Description("以 SQL 查詢資料（僅允許 SELECT），會回傳每列以欄位名稱對應值的物件陣列")]
+        public async Task<ToolResponse> Query([Description("資料庫檔案路徑")] string dbPath,
+                                                                          [Description("僅允許 SELECT 查詢")] string sql,
+                                                                          //[Description("最大回傳列數, 預設500")] int maxRows = DEFAULT_MAX_ROWS,
+                                                                          CancellationToken cancellation = default)
+        {
+            var resp = new ToolResponse();
+            try
+            {
+                if (!File.Exists(dbPath)) return MakeError("找不到資料庫檔案");
+                if (!IsSelectOnly(sql)) return MakeError("僅允許 SELECT 查詢");
 
-        //        // 確保有 LIMIT（避免無限回傳）
-        //        string safeSql = sql.TrimEnd();
-        //        if (!safeSql.Contains("LIMIT", StringComparison.OrdinalIgnoreCase))
-        //        {
-        //            safeSql += $" LIMIT {maxRows}";
-        //        }
+                //// 確保有 LIMIT（避免無限回傳）
+                //string safeSql = sql.TrimEnd();
+                //if (!safeSql.Contains("LIMIT", StringComparison.OrdinalIgnoreCase))
+                //{
+                //    safeSql += $" LIMIT {maxRows}";
+                //}
 
-        //        using var conn = new SqliteConnection(GetConnectionString(dbPath));
-        //        await conn.OpenAsync(cancellation);
+                using var conn = new SqliteConnection(GetConnectionString(dbPath));
+                await conn.OpenAsync(cancellation);
 
-        //        var cmd = conn.CreateCommand();
-        //        cmd.CommandText = safeSql;
+                var cmd = conn.CreateCommand();
+                cmd.CommandText = sql;
 
-        //        var result = new Dictionary<string, object>();
-        //        var columns = new List<string>();
-        //        var rows = new List<object[]>();
+                // 每列以「欄位名稱 -> 值」的物件表示，回傳陣列，方便直接序列化為 JSON 供 LLM 閱讀
+                var rows = new List<Dictionary<string, object?>>();
 
-        //        await using (var reader = await cmd.ExecuteReaderAsync(cancellation))
-        //        {
-        //            for (int i = 0; i < reader.FieldCount; i++) columns.Add(reader.GetName(i));
+                await using (var reader = await cmd.ExecuteReaderAsync(cancellation))
+                {
+                    var columns = new string[reader.FieldCount];
+                    for (int i = 0; i < reader.FieldCount; i++) columns[i] = reader.GetName(i);
 
-        //            while (await reader.ReadAsync(cancellation))
-        //            {
-        //                var row = new object[reader.FieldCount];
-        //                for (int i = 0; i < reader.FieldCount; i++)
-        //                {
-        //                    row[i] = reader.IsDBNull(i) ? null : reader.GetValue(i);
-        //                }
-        //                rows.Add(row);
-        //            }
-        //        }
+                    while (await reader.ReadAsync(cancellation))
+                    {
+                        var row = new Dictionary<string, object?>();
+                        for (int i = 0; i < reader.FieldCount; i++)
+                        {
+                            row[columns[i]] = reader.IsDBNull(i) ? null : reader.GetValue(i);
+                        }
+                        rows.Add(row);
+                    }
+                }
 
-        //        result["columns"] = columns;
-        //        result["rows"] = rows;
-        //        resp.Data = result;
-        //    }
-        //    catch (OperationCanceledException) { resp.FailMessgae = "查詢已取消"; }
-        //    catch (Exception ex) { resp.FailMessgae = ex.Message; }
-        //    return resp;
-        //}
+                resp.Data = rows.ToJsonString();
+            }
+            catch (OperationCanceledException) { resp.FailMessgae = "查詢已取消"; }
+            catch (Exception ex) { resp.FailMessgae = ex.Message; }
+            return resp;
+        }
 
         //[Description("快速取得資料表前 N 列（預覽）")]
         //public Task<ToolResponse<Dictionary<string, object>>> PreviewTable([Description("資料庫檔案路徑")] string dbPath,

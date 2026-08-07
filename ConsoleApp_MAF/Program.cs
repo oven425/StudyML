@@ -21,7 +21,7 @@ Console.WriteLine("Hello, World!");
 string m_ModelPath = @"..\..\..\..\gguf_gemma4\gemma-4-E2B-it-Q4_K_M.gguf";
 string m_MmProjPath = @"..\..\..\..\gguf_gemma4\mmproj-gemma-4-E2B-it-Q8_0.gguf";
 
-await Audio.To("123.mp3");
+//await Audio.To("123.mp3");
 //using var codeAct = new HyperlightCodeActProvider(HyperlightCodeActProviderOptions.CreateForWasm(guestPath));
 OpenMeteo om = new();
 ComputerInfo info = new();
@@ -45,8 +45,8 @@ var tools = new AIFunction[]
     //AIFunctionFactory.Create(om.GetCurrent),
     AIFunctionFactory.Create(sqlitedb.ListTables),
     AIFunctionFactory.Create(sqlitedb.GetTableSchema),
-    //AIFunctionFactory.Create(sqlitedb.Query)
-    
+    AIFunctionFactory.Create(sqlitedb.Query)
+
 };
 
 var option = new ChatOptions()
@@ -68,7 +68,7 @@ var option = new ChatOptions()
 
 };
 
-
+await RunCopilotAsync();
 var gemma4client = new Gemma4ChatClient(m_ModelPath, m_MmProjPath);
 
 
@@ -165,11 +165,17 @@ async Task RunCopilotAsync()
 {
     await using var copilotClient = new GitHub.Copilot.CopilotClient();
     await copilotClient.StartAsync();
-
+    var readOnlyToolOptions = new GitHub.Copilot.CopilotToolOptions { SkipPermission = true };
 #pragma warning disable GHCP001
     var sessionConfig = new GitHub.Copilot.SessionConfig
     {
-        Tools = tools,
+        Tools =
+        [
+            GitHub.Copilot.CopilotTool.DefineTool(sqlitedb.ListTables, toolOptions: readOnlyToolOptions),
+    GitHub.Copilot.CopilotTool.DefineTool(sqlitedb.GetTableSchema, toolOptions: readOnlyToolOptions),
+    GitHub.Copilot.CopilotTool.DefineTool(sqlitedb.Query, toolOptions: readOnlyToolOptions)
+
+        ],
         SystemMessage = new GitHub.Copilot.SystemMessageConfig
         {
             Content = $"""
@@ -195,11 +201,28 @@ async Task RunCopilotAsync()
 #pragma warning restore GHCP001
     Console.WriteLine($"Copilot 模型：{sessionConfig.Model ?? "使用服務預設模型"}");
     Console.WriteLine($"思考強度：{sessionConfig.ReasoningEffort ?? "使用模型預設強度"}");
-    AIAgent copilotAgent = GitHub.Copilot.CopilotClientExtensions.AsAIAgent(
-        copilotClient,
-        sessionConfig: sessionConfig);
 
-    AgentSession session = await copilotAgent.CreateSessionAsync();
+    // 直接使用原生 CopilotSession（而非 AsAIAgent 包裝），才能訂閱到
+    // AssistantReasoningEvent / ToolExecutionStartEvent 等底層事件。
+    await using GitHub.Copilot.CopilotSession session = await copilotClient.CreateSessionAsync(sessionConfig);
+
+    using var subscription = session.On<GitHub.Copilot.SessionEvent>(evt =>
+    {
+        switch (evt)
+        {
+            case GitHub.Copilot.AssistantReasoningEvent reasoning:
+                Console.WriteLine($"[思考] {reasoning.Data?.Content}");
+                break;
+
+            case GitHub.Copilot.ToolExecutionStartEvent toolStart:
+                Console.WriteLine($"[步驟開始] 工具={toolStart.Data?.ToolName} 參數={JsonSerializer.Serialize(toolStart.Data?.Arguments)}");
+                break;
+
+            case GitHub.Copilot.ToolExecutionCompleteEvent toolComplete:
+                Console.WriteLine($"[步驟完成] ToolCallId={toolComplete.Data?.ToolCallId} 成功={toolComplete.Data?.Success}");
+                break;
+        }
+    });
 
     while (true)
     {
@@ -212,8 +235,27 @@ async Task RunCopilotAsync()
             break;
         }
 
-        AgentResponse response = await copilotAgent.RunAsync(question, session);
-        Console.WriteLine($"Copilot Assistant: {response}");
+
+        var idleTcs = new TaskCompletionSource<GitHub.Copilot.AssistantMessageEvent?>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        GitHub.Copilot.AssistantMessageEvent? lastMessage = null;
+
+        using var messageSubscription = session.On<GitHub.Copilot.SessionEvent>(evt =>
+        {
+            switch (evt)
+            {
+                case GitHub.Copilot.AssistantMessageEvent msg:
+                    lastMessage = msg;
+                    break;
+                case GitHub.Copilot.SessionIdleEvent:
+                    idleTcs.TrySetResult(lastMessage);
+                    break;
+            }
+        });
+
+        await session.SendAsync(question);
+        var response = await idleTcs.Task;
+        Console.WriteLine($"Copilot Assistant: {response?.Data?.Content}");
     }
 }
 
