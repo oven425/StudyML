@@ -86,7 +86,10 @@ namespace ConsoleApp_MAF
                 {
                     ContextSize = 8192,
                     GpuLayerCount = 0,
-                    Threads = Environment.ProcessorCount-4
+                    Threads = 4,
+                    BatchThreads = 12,
+                    UseMemorymap = true,
+                    //UseMemoryLock = true,
                 };
                 this.m_Weights = await LLamaWeights.LoadFromFileAsync(this.m_Parameters);
                 this.m_Context = this.m_Weights.CreateContext(this.m_Parameters);
@@ -125,7 +128,7 @@ namespace ConsoleApp_MAF
 
             }
         }
-        JsonSerializerOptions jsonoptions = new JsonSerializerOptions()
+        JsonSerializerOptions jsonoptions = new()
         {
             Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
             WriteIndented = false

@@ -21,7 +21,7 @@ Console.WriteLine("Hello, World!");
 string m_ModelPath = @"..\..\..\..\gguf_gemma4\gemma-4-E2B-it-Q4_K_M.gguf";
 string m_MmProjPath = @"..\..\..\..\gguf_gemma4\mmproj-gemma-4-E2B-it-Q8_0.gguf";
 
-
+await Audio.To("123.mp3");
 //using var codeAct = new HyperlightCodeActProvider(HyperlightCodeActProviderOptions.CreateForWasm(guestPath));
 OpenMeteo om = new();
 ComputerInfo info = new();
@@ -29,16 +29,14 @@ FileOperation fs = new();
 DataBase sqlitedb = new();
 AIToolsFactory toolsFactory = new();
 toolsFactory.GetTimeTools();
-//var tables = await sqlitedb.ListTables("northwind.db");
-//foreach (var table in tables.Data)
-//{
-//    var sss = await sqlitedb.GetTableSchema("northwind.db", table);
-//}
+
+
 var tools = new AIFunction[]
 {
     //AIFunctionFactory.Create(info.GetCurrentDateTime),
     //AIFunctionFactory.Create(info.GetCurrentUser),
     //AIFunctionFactory.Create(info.GetFolder),
+    AIFunctionFactory.Create(info.GetFullName),
     //AIFunctionFactory.Create(info.list_directory),
     //AIFunctionFactory.Create(fs.ReadTxt),
     //AIFunctionFactory.Create(fs.ReadImage),
@@ -53,10 +51,13 @@ var tools = new AIFunction[]
 
 var option = new ChatOptions()
 {
+    //Instructions = $"""
+    //你是個Windows助理,所有回答要有禮貌以及使用繁體中文
+    //現在的路徑是{AppDomain.CurrentDomain.BaseDirectory}
+    //桌面的路徑是{Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory)}
+    //""",
     Instructions = $"""
     你是個Windows助理,所有回答要有禮貌以及使用繁體中文
-    現在的路徑是{AppDomain.CurrentDomain.BaseDirectory}
-    桌面的路徑是{Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory)}
     """,
     Tools = 
     [
@@ -120,13 +121,17 @@ var agent = funcclient.AsAIAgent(new ChatClientAgentOptions()
     UseProvidedChatClientAsIs=true,
     //AIContextProviders = [agentSkillsProvider, trackingContextProvider]
 });
-
-
-while(true)
+var session = await agent.CreateSessionAsync();
+var provider = agent.GetService<InMemoryChatHistoryProvider>();
+while (true)
 {
     Console.Write("User:");
     var question = Console.ReadLine();
-    var runresp = await agent.RunAsync(question);
+    if(string.IsNullOrEmpty(question) || question=="exit")
+    {
+        break;
+    }
+    var runresp = await agent.RunAsync(question, session);
     Console.Write("Assistant:");
     Console.WriteLine($"{runresp.Usage?.TotalTokenCount}");
     var functionApprovalRequests = runresp.Messages
@@ -138,7 +143,7 @@ while(true)
         foreach (var oo in functionApprovalRequests)
         {
             var approvalMessage = new ChatMessage(ChatRole.User, [oo.CreateResponse(true)]);
-            Console.WriteLine(await agent.RunAsync(approvalMessage));
+            Console.WriteLine(await agent.RunAsync(approvalMessage, session));
         }
     }
     else
@@ -147,6 +152,14 @@ while(true)
     }
     
 }
+
+Console.WriteLine("Save this session? (y/n)");
+if(Console.ReadKey().KeyChar == 'y')
+{
+    var json = session.ToJsonString();
+    System.Diagnostics.Trace.WriteLine(json);
+}
+
 
 async Task RunCopilotAsync()
 {

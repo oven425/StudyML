@@ -78,7 +78,12 @@ namespace ConsoleApp_MAF
         [Description("取得windows現在的使用者名稱")]
         public ChatMessage GetCurrentUser()
             => new() { Contents = [new TextContent(Environment.UserName)] };
-
+        [Description("取得檔案絕對路徑")]
+        public ToolResponse GetFullName([Description("檔案名稱")]string filename)
+        {
+            var fullname = System.IO.Path.GetFullPath(filename);
+            return new() { Data = fullname };
+        }
         [Description("取得指定 Windows 系統特殊資料夾的絕對路徑")]
         public ToolResponse GetFolder([Description("The name of the .NET Environment.SpecialFolder enum (e.g., Desktop, MyDocuments).")]string folder)
         {

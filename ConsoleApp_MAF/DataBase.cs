@@ -107,8 +107,8 @@ namespace ConsoleApp_MAF
         //    return resp;
         //}
 
-
-        async public Task<ToolResponse> GetTableTable([Description("資料庫檔案路徑")] string dbPath, [Description("資料表名稱")] string tableName)
+        [Description("取得指定資料表或整個資料庫的 DDL Schema，用來分析表格欄位與 Foreign Key 關聯結構。")]
+        async public Task<ToolResponse> GetTableSchema([Description("資料庫檔案路徑")] string dbPath, [Description("資料表名稱")] string tableName)
         {
             var resp = new ToolResponse();
             try
@@ -120,16 +120,15 @@ namespace ConsoleApp_MAF
                 await conn.OpenAsync();
 
                 var cmd = conn.CreateCommand();
-                cmd.CommandText = $"SELECT sql FROM sqlite_master WHERE type = 'table' AND name ='{tableName.Replace("'", "''")}');";
-
-                var cols = new List<object>();
-                await using (var reader = await cmd.ExecuteReaderAsync())
-                {
-
-                }
-                resp.Data = cols.ToJsonString();
+                cmd.CommandText = $"SELECT sql FROM sqlite_master WHERE type = 'table' AND name ='{tableName.Replace("'", "''")}';";
+                await using var reader = await cmd.ExecuteReaderAsync();
+                await reader.ReadAsync();
+                resp.Data = reader.GetString(0);
             }
-            catch (Exception ex) { resp.FailMessgae = ex.Message; }
+            catch (Exception ex) 
+            {
+                resp.FailMessgae = ex.Message; 
+            }
             return resp;
         }
 
