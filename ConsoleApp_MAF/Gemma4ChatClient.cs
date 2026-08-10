@@ -84,7 +84,9 @@ namespace ConsoleApp_MAF
 
                 this.m_Parameters = new ModelParams(modelpath)
                 {
-                    ContextSize = 8192,
+                    //256000
+                    //81920
+                    ContextSize = 81920,
                     GpuLayerCount = 0,
                     Threads = 4,
                     BatchThreads = 12,

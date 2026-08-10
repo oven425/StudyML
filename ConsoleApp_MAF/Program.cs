@@ -44,7 +44,7 @@ var tools = new AIFunction[]
     //AIFunctionFactory.Create(get_currentlocation),
     //AIFunctionFactory.Create(om.GetCurrent),
     AIFunctionFactory.Create(sqlitedb.ListTables),
-    AIFunctionFactory.Create(sqlitedb.GetTableSchema),
+    AIFunctionFactory.Create(sqlitedb.GetTableSchemas),
     AIFunctionFactory.Create(sqlitedb.Query)
 
 };
@@ -68,7 +68,6 @@ var option = new ChatOptions()
 
 };
 
-await RunCopilotAsync();
 var gemma4client = new Gemma4ChatClient(m_ModelPath, m_MmProjPath);
 
 
@@ -88,12 +87,12 @@ var funcclient = gemma4client.AsBuilder()
 
 
 //var aaresp = await funcclient.GetResponseAsync("現在的位置的天氣?", option);
-var cm = new ChatMessage(ChatRole.User,
-    [
-    await DataContent.LoadFromAsync("a.jpg"),
-        //new TextContent("用中文描述這張圖片"),
-        new TextContent("這張圖片裡面有什麼東西?"),
-    ]);
+//var cm = new ChatMessage(ChatRole.User,
+//    [
+//    await DataContent.LoadFromAsync("a.jpg"),
+//        //new TextContent("用中文描述這張圖片"),
+//        new TextContent("這張圖片裡面有什麼東西?"),
+//    ]);
 //var aaresp1 = await funcclient.GetResponseAsync(cm, option);
 var trackingContextProvider = new TrackingContextProvider();
 
@@ -172,9 +171,8 @@ async Task RunCopilotAsync()
         Tools =
         [
             GitHub.Copilot.CopilotTool.DefineTool(sqlitedb.ListTables, toolOptions: readOnlyToolOptions),
-    GitHub.Copilot.CopilotTool.DefineTool(sqlitedb.GetTableSchema, toolOptions: readOnlyToolOptions),
-    GitHub.Copilot.CopilotTool.DefineTool(sqlitedb.Query, toolOptions: readOnlyToolOptions)
-
+            GitHub.Copilot.CopilotTool.DefineTool(sqlitedb.GetTableSchemas, toolOptions: readOnlyToolOptions),
+            GitHub.Copilot.CopilotTool.DefineTool(sqlitedb.Query, toolOptions: readOnlyToolOptions)
         ],
         SystemMessage = new GitHub.Copilot.SystemMessageConfig
         {

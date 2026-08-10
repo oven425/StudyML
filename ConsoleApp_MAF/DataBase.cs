@@ -12,9 +12,6 @@ namespace ConsoleApp_MAF
 {
     public class DataBase
     {
-        // 最大允許回傳列數（保護性預設）
-        private const int DEFAULT_MAX_ROWS = 500;
-
         private ToolResponse MakeError(string msg)
             => new() { FailMessgae = msg };
 
@@ -35,6 +32,28 @@ namespace ConsoleApp_MAF
             }.ToString();
         }
 
+        async Task<List<string>> GetAllTables(string dbPath)
+        {
+            using var conn = new SqliteConnection(GetConnectionString(dbPath));
+            await conn.OpenAsync();
+
+            var cmd = conn.CreateCommand();
+            cmd.CommandText = """
+                    SELECT name
+                    FROM sqlite_master
+                    WHERE type='table' AND name NOT LIKE 'sqlite_%'
+                    ORDER BY name;
+                    """;
+
+            var list = new List<string>();
+            await using var reader = await cmd.ExecuteReaderAsync();
+            while (await reader.ReadAsync())
+            {
+                list.Add(reader.GetString(0));
+            }
+            return list;
+        }
+
         [Description("列出資料庫中的所有資料表名稱")]
         public async Task<ToolResponse> ListTables([Description("資料庫檔案路徑，例如 ./data.db")] string dbPath)
         {
@@ -43,35 +62,88 @@ namespace ConsoleApp_MAF
             {
                 if (!File.Exists(dbPath)) return MakeError("找不到資料庫檔案");
 
-                using var conn = new SqliteConnection(GetConnectionString(dbPath));
-                await conn.OpenAsync();
+                //using var conn = new SqliteConnection(GetConnectionString(dbPath));
+                //await conn.OpenAsync();
 
-                var cmd = conn.CreateCommand();
-                cmd.CommandText = """
-                    SELECT name
-                    FROM sqlite_master
-                    WHERE type='table' AND name NOT LIKE 'sqlite_%'
-                    ORDER BY name;
-                    """;
+                //var cmd = conn.CreateCommand();
+                //cmd.CommandText = """
+                //    SELECT name
+                //    FROM sqlite_master
+                //    WHERE type='table' AND name NOT LIKE 'sqlite_%'
+                //    ORDER BY name;
+                //    """;
 
-                var list = new List<string>();
-                await using (var reader = await cmd.ExecuteReaderAsync())
-                {
-                    while (await reader.ReadAsync())
-                    {
-                        list.Add(reader.GetString(0));
-                    }
-                }
-                
+                //var list = new List<string>();
+                //await using (var reader = await cmd.ExecuteReaderAsync())
+                //{
+                //    while (await reader.ReadAsync())
+                //    {
+                //        list.Add(reader.GetString(0));
+                //    }
+                //}
+
+                //resp.Data = list.ToJsonString();
+                var list = await GetAllTables(dbPath);
                 resp.Data = list.ToJsonString();
             }
             catch (Exception ex) { resp.FailMessgae = ex.Message; }
             return resp;
         }
 
-        //[Description("取得指定資料表的欄位資訊")]
-        //public async Task<ToolResponse> GetTableSchema([Description("資料庫檔案路徑")] string dbPath,
-        //                                                             [Description("資料表名稱")] string tableName)
+        async Task<List<string>> GetAllSchemas(string dbPath)
+        {
+            var alltables = await this.GetAllTables(dbPath);
+            using var conn = new SqliteConnection(GetConnectionString(dbPath));
+            await conn.OpenAsync();
+
+            using var cmd = conn.CreateCommand();
+            List<string> allsechma = [];
+            foreach (var table in alltables)
+            {
+                cmd.CommandText = $"SELECT sql FROM sqlite_master WHERE type = 'table' AND name ='{table.Replace("'", "''")}';";
+                await using var reader = await cmd.ExecuteReaderAsync();
+                await reader.ReadAsync();
+                allsechma.Add(reader.GetString(0));
+            }
+            return allsechma;
+        }
+
+        [Description("取得整個資料庫的 DDL Schema，用來分析表格欄位與 Foreign Key 關聯結構。")]
+        async public Task<ToolResponse> GetTableSchemas([Description("資料庫檔案路徑")] string dbPath)
+        {
+            var resp = new ToolResponse();
+            try
+            {
+                if (!File.Exists(dbPath)) return MakeError("找不到資料庫檔案");
+                var alltables = await this.GetAllTables(dbPath);
+                using var conn = new SqliteConnection(GetConnectionString(dbPath));
+                await conn.OpenAsync();
+
+                using var cmd = conn.CreateCommand();
+                List<string> allschma = [];
+                foreach (var table in alltables)
+                {
+                    cmd.CommandText = $"SELECT sql FROM sqlite_master WHERE type = 'table' AND name ='{table.Replace("'", "''")}';";
+                    await using var reader = await cmd.ExecuteReaderAsync();
+                    await reader.ReadAsync();
+                    allschma.Add(reader.GetString(0));
+                }
+                resp.Data = allschma.ToJsonString();
+                //cmd.CommandText = $"SELECT sql FROM sqlite_master WHERE type = 'table' AND name ='{tableName.Replace("'", "''")}';";
+                //await using var reader = await cmd.ExecuteReaderAsync();
+                //await reader.ReadAsync();
+                //resp.Data = reader.GetString(0);
+            }
+            catch (Exception ex)
+            {
+                resp.FailMessgae = ex.Message;
+            }
+            return resp;
+        }
+
+
+        //[Description("取得指定資料表或整個資料庫的 DDL Schema，用來分析表格欄位與 Foreign Key 關聯結構。")]
+        //async public Task<ToolResponse> GetTableSchema([Description("資料庫檔案路徑")] string dbPath, [Description("資料表名稱")] string tableName)
         //{
         //    var resp = new ToolResponse();
         //    try
@@ -83,60 +155,21 @@ namespace ConsoleApp_MAF
         //        await conn.OpenAsync();
 
         //        var cmd = conn.CreateCommand();
-        //        cmd.CommandText = $"PRAGMA table_info('{tableName.Replace("'", "''")}');";
-
-        //        var cols = new List<object>();
-        //        await using (var reader = await cmd.ExecuteReaderAsync())
-        //        {
-        //            while (await reader.ReadAsync())
-        //            {
-        //                cols.Add(new
-        //                {
-        //                    cid = reader.GetInt32(0),
-        //                    name = reader.GetString(1),
-        //                    type = reader.GetString(2),
-        //                    notnull = reader.GetInt32(3) == 1,
-        //                    dflt_value = reader.IsDBNull(4) ? null : reader.GetValue(4),
-        //                    pk = reader.GetInt32(5) == 1
-        //                });
-        //            }
-        //        }
-        //        resp.Data = cols.ToJsonString();
+        //        cmd.CommandText = $"SELECT sql FROM sqlite_master WHERE type = 'table' AND name ='{tableName.Replace("'", "''")}';";
+        //        await using var reader = await cmd.ExecuteReaderAsync();
+        //        await reader.ReadAsync();
+        //        resp.Data = reader.GetString(0);
         //    }
-        //    catch (Exception ex) { resp.FailMessgae = ex.Message; }
+        //    catch (Exception ex) 
+        //    {
+        //        resp.FailMessgae = ex.Message; 
+        //    }
         //    return resp;
         //}
 
-        [Description("取得指定資料表或整個資料庫的 DDL Schema，用來分析表格欄位與 Foreign Key 關聯結構。")]
-        async public Task<ToolResponse> GetTableSchema([Description("資料庫檔案路徑")] string dbPath, [Description("資料表名稱")] string tableName)
-        {
-            var resp = new ToolResponse();
-            try
-            {
-                if (!File.Exists(dbPath)) return MakeError("找不到資料庫檔案");
-                if (string.IsNullOrWhiteSpace(tableName)) return MakeError("需要 tableName");
-
-                using var conn = new SqliteConnection(GetConnectionString(dbPath));
-                await conn.OpenAsync();
-
-                var cmd = conn.CreateCommand();
-                cmd.CommandText = $"SELECT sql FROM sqlite_master WHERE type = 'table' AND name ='{tableName.Replace("'", "''")}';";
-                await using var reader = await cmd.ExecuteReaderAsync();
-                await reader.ReadAsync();
-                resp.Data = reader.GetString(0);
-            }
-            catch (Exception ex) 
-            {
-                resp.FailMessgae = ex.Message; 
-            }
-            return resp;
-        }
-
         [Description("以 SQL 查詢資料（僅允許 SELECT），會回傳每列以欄位名稱對應值的物件陣列")]
         public async Task<ToolResponse> Query([Description("資料庫檔案路徑")] string dbPath,
-                                                                          [Description("僅允許 SELECT 查詢")] string sql,
-                                                                          //[Description("最大回傳列數, 預設500")] int maxRows = DEFAULT_MAX_ROWS,
-                                                                          CancellationToken cancellation = default)
+                                              [Description("僅允許 SELECT 查詢")] string sql)
         {
             var resp = new ToolResponse();
             try
@@ -144,28 +177,20 @@ namespace ConsoleApp_MAF
                 if (!File.Exists(dbPath)) return MakeError("找不到資料庫檔案");
                 if (!IsSelectOnly(sql)) return MakeError("僅允許 SELECT 查詢");
 
-                //// 確保有 LIMIT（避免無限回傳）
-                //string safeSql = sql.TrimEnd();
-                //if (!safeSql.Contains("LIMIT", StringComparison.OrdinalIgnoreCase))
-                //{
-                //    safeSql += $" LIMIT {maxRows}";
-                //}
-
                 using var conn = new SqliteConnection(GetConnectionString(dbPath));
-                await conn.OpenAsync(cancellation);
+                await conn.OpenAsync();
 
                 var cmd = conn.CreateCommand();
                 cmd.CommandText = sql;
 
-                // 每列以「欄位名稱 -> 值」的物件表示，回傳陣列，方便直接序列化為 JSON 供 LLM 閱讀
                 var rows = new List<Dictionary<string, object?>>();
 
-                await using (var reader = await cmd.ExecuteReaderAsync(cancellation))
+                await using (var reader = await cmd.ExecuteReaderAsync())
                 {
                     var columns = new string[reader.FieldCount];
                     for (int i = 0; i < reader.FieldCount; i++) columns[i] = reader.GetName(i);
 
-                    while (await reader.ReadAsync(cancellation))
+                    while (await reader.ReadAsync())
                     {
                         var row = new Dictionary<string, object?>();
                         for (int i = 0; i < reader.FieldCount; i++)
@@ -183,15 +208,6 @@ namespace ConsoleApp_MAF
             return resp;
         }
 
-        //[Description("快速取得資料表前 N 列（預覽）")]
-        //public Task<ToolResponse<Dictionary<string, object>>> PreviewTable([Description("資料庫檔案路徑")] string dbPath,
-        //                                                                   [Description("資料表名稱")] string tableName,
-        //                                                                   [Description("回傳列數")] int limit = 20,
-        //                                                                   CancellationToken cancellation = default)
-        //{
-        //    var sql = $"SELECT * FROM \"{tableName.Replace("\"", "\"\"")}\" LIMIT {limit}";
-        //    return Query(dbPath, sql, limit, cancellation);
-        //}
 
         //[Description("取得資料表列數")]
         //public async Task<ToolResponse<long>> RowCount([Description("資料庫檔案路徑")] string dbPath,
