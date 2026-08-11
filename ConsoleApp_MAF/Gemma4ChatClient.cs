@@ -2,6 +2,7 @@
 using LLama;
 using LLama.Common;
 using LLama.Native;
+using LLama.Sampling;
 using Microsoft.Agents.AI;
 using Microsoft.Extensions.AI;
 using System;
@@ -157,7 +158,7 @@ namespace ConsoleApp_MAF
                 {
                     foreach (var content in lastmsg.Contents.OfType<FunctionResultContent>())
                     {
-                        if (content.Result is JsonElement jsonResult)
+                        if (content?.Result is JsonElement jsonResult)
                         {
                             
                             if(jsonResult.ValueKind == JsonValueKind.String)
@@ -190,7 +191,9 @@ namespace ConsoleApp_MAF
                                     strb.Append($"<|tool_response>{JsonSerializer.Serialize(toolresp, jsonoptions)}<tool_response|>");
                                     continue;
                                 }
-                                strb.Append($"<|tool_response>{JsonSerializer.Serialize(content.Result, jsonoptions)}<tool_response|>");
+                                var str_pps = JsonSerializer.Serialize(content.Result, jsonoptions);
+                                str_pps = str_pps.Replace("\"", "<|\"|>");
+                                strb.Append($"<|tool_response>{str_pps}<tool_response|>");
                             }
                             
 
@@ -249,9 +252,53 @@ namespace ConsoleApp_MAF
                     System.Diagnostics.Trace.WriteLine(strb.ToString());
                 }
             }
+            ChatResponse? response = this.ParseToolCall(strb.ToString());
+            //string toolCallPattern = @"<\|tool_call>(.*?)<tool_call\|>";
+            //var resp_str = strb.ToString();
+            //MatchCollection toolCallMatchs = Regex.Matches(resp_str, toolCallPattern, RegexOptions.Singleline);
+            //if (toolCallMatchs.Count > 0)
+            //{
+            //    var functionCalls = new List<FunctionCallContent>();
+            //    foreach (Match match in toolCallMatchs)
+            //    {
+            //        string toolCallJson = match.Groups[1].Value.Trim();
+            //        try
+            //        {
+            //            (string action, string args) = NormailiszeCToolCall(toolCallJson);
+            //            IDictionary<string, object?>? arguments = null;
+            //            if (!string.IsNullOrEmpty(args))
+            //            {
+            //                arguments = JsonSerializer.Deserialize<Dictionary<string, object?>>(args, new JsonSerializerOptions
+            //                {
+            //                    Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+            //                });
+            //            }
+            //            string callId = Guid.NewGuid().ToString("N")[..8];
+            //            functionCalls.Add(new FunctionCallContent(callId, action, arguments));
+            //        }
+            //        catch(Exception ee)
+            //        {
+            //            System.Diagnostics.Trace.WriteLine(ee.Message);
+            //        }
+            //    }
+            //    var assistantMsg = new ChatMessage(ChatRole.Assistant, [.. functionCalls]);
+            //    response = new ChatResponse(assistantMsg)
+            //    {
+            //        FinishReason = ChatFinishReason.ToolCalls
+            //    };
+
+            //}
+
+
+            response ??= new(new ChatMessage(ChatRole.Assistant, strb.ToString()));
+            response.Usage = this.m_UsageDetails;
+            return response;
+        }
+
+        public ChatResponse? ParseToolCall(string resp_str)
+        {
             ChatResponse? response = null;
             string toolCallPattern = @"<\|tool_call>(.*?)<tool_call\|>";
-            var resp_str = strb.ToString();
             MatchCollection toolCallMatchs = Regex.Matches(resp_str, toolCallPattern, RegexOptions.Singleline);
             if (toolCallMatchs.Count > 0)
             {
@@ -259,21 +306,21 @@ namespace ConsoleApp_MAF
                 foreach (Match match in toolCallMatchs)
                 {
                     string toolCallJson = match.Groups[1].Value.Trim();
-                    (string action, string args) = NormailiszeCToolCall(toolCallJson);
+                    string action;
+                    string args;
                     try
                     {
+                        (action, args) = NormailiszeCToolCall(toolCallJson);
+
                         IDictionary<string, object?>? arguments = null;
                         if (!string.IsNullOrEmpty(args))
                         {
-                            arguments = JsonSerializer.Deserialize<Dictionary<string, object?>>(args, new JsonSerializerOptions
-                            {
-                                Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping
-                            });
+                            arguments = JsonSerializer.Deserialize<Dictionary<string, object?>>(args);
                         }
                         string callId = Guid.NewGuid().ToString("N")[..8];
                         functionCalls.Add(new FunctionCallContent(callId, action, arguments));
                     }
-                    catch(Exception ee)
+                    catch (Exception ee)
                     {
                         System.Diagnostics.Trace.WriteLine(ee.Message);
                     }
@@ -282,17 +329,11 @@ namespace ConsoleApp_MAF
                 response = new ChatResponse(assistantMsg)
                 {
                     FinishReason = ChatFinishReason.ToolCalls
-
                 };
-
+                
             }
-
-
-            response ??= new(new ChatMessage(ChatRole.Assistant, strb.ToString()));
-            response.Usage = this.m_UsageDetails;
             return response;
         }
-
 
         void CalcToken(LLamaPerfContextTimings before, LLamaPerfContextTimings after)
         {
@@ -339,14 +380,14 @@ namespace ConsoleApp_MAF
 
             string action = match.Groups["action"].Value;
             string argsContent = match.Groups["argsContent"].Value;
-            string cleanPattern = @"(?<key>\w+)\s*:\s*<\|""\|>(?<val>.*?)<\|""\|>";
-            string standardizedArgs = Regex.Replace(argsContent, cleanPattern, @"""${key}"":""${val}""");
-            //standardizedArgs = Regex.Replace(standardizedArgs, @"\\(?![""\\/bfnrt]|u[0-9a-fA-F]{4})", @"\\");
-            //standardizedArgs = Regex.Replace(standardizedArgs, @"(?<!\\)\\(?![\\""/bfnrtu])", @"\\");
-            //            <| tool_call > call:GetCurrent{
-            //                "Long": 121.6577,
-            //  "Lat": 25.0696
-            //}< tool_call |>
+
+            // First, replace <|"|> back to regular quotes
+            argsContent = argsContent.Replace(@"<|""|>", "\"");
+            string cleanPattern = @"(?<key>\w+)\s*:\s*""(?<val>(?:[^""\\]|\\.)*?)""";
+            string standardizedArgs = Regex.Replace(argsContent, cleanPattern, @"""${key}"":""${val}""", RegexOptions.Singleline);
+
+            // Escape backslashes for JSON
+            standardizedArgs = standardizedArgs.Replace("\r\n", "\\n").Replace("\n", "\\n");
             standardizedArgs = standardizedArgs.Replace(@"\", @"\\");
             string finalJson = $"{{{standardizedArgs}}}";
             return (action, finalJson);

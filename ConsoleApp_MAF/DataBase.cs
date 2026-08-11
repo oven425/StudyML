@@ -55,7 +55,7 @@ namespace ConsoleApp_MAF
         }
 
         [Description("列出資料庫中的所有資料表名稱")]
-        public async Task<ToolResponse> ListTables([Description("資料庫檔案路徑，例如 ./data.db")] string dbPath)
+        public async Task<ToolResponse> ListTables([Description("檔案路徑")] string dbPath)
         {
             var resp = new ToolResponse();
             try
@@ -109,7 +109,7 @@ namespace ConsoleApp_MAF
         }
 
         [Description("取得整個資料庫的 DDL Schema，用來分析表格欄位與 Foreign Key 關聯結構。")]
-        async public Task<ToolResponse> GetTableSchemas([Description("資料庫檔案路徑")] string dbPath)
+        async public Task<ToolResponse> GetTableSchemas([Description("檔案路徑")] string dbPath)
         {
             var resp = new ToolResponse();
             try
