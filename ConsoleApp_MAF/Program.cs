@@ -109,6 +109,27 @@ var trackingContextProvider = new TrackingContextProvider();
 //    )
 //    .AddResource("kg=2.205lb, m=3.281ft, L=0.264gal", "conversion-table", "Supported unit pairs");
 
+var slqite = new AgentInlineSkill(
+        name: "unit-converter",
+        description: "Converts between measurement units.",
+        instructions: """
+            Use this skill to convert values between metric and imperial units.
+            Refer to the conversion-table resource for supported unit pairs.
+            Run the convert script to perform conversions.
+            """
+    );
+
+var datamining = new AgentInlineSkill(
+        name: "unit-converter",
+        description: "Converts between measurement units.",
+        instructions: """
+            Use this skill to convert values between metric and imperial units.
+            Refer to the conversion-table resource for supported unit pairs.
+            Run the convert script to perform conversions.
+            """
+    );
+
+
 //var source = new AgentInMemorySkillsSource([skill]);
 
 //var provider = new AgentSkillsProvider(source);

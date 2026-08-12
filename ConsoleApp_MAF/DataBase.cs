@@ -54,8 +54,8 @@ namespace ConsoleApp_MAF
             return list;
         }
 
-        [Description("列出資料庫中的所有資料表名稱")]
-        public async Task<ToolResponse> ListTables([Description("檔案路徑")] string dbPath)
+        [Description("列出 SQLite 資料庫中的所有資料表名稱。撰寫資料查詢前，先使用此工具確認資料表是否存在。")]
+        public async Task<ToolResponse> ListTables([Description("SQLite 資料庫檔案路徑；可使用完整絕對路徑或相對於目前工作目錄的路徑，例如 data/mydb.sqlite")] string dbPath)
         {
             var resp = new ToolResponse();
             try
@@ -108,8 +108,8 @@ namespace ConsoleApp_MAF
             return allsechma;
         }
 
-        [Description("取得整個資料庫的 DDL Schema，用來分析表格欄位與 Foreign Key 關聯結構。")]
-        async public Task<ToolResponse> GetTableSchemas([Description("檔案路徑")] string dbPath)
+        [Description("取得 SQLite 資料庫所有資料表的 DDL Schema（CREATE TABLE）。撰寫資料查詢前，使用此工具確認資料表欄位與 Foreign Key 關聯，避免猜測名稱。")]
+        async public Task<ToolResponse> GetTableSchemas([Description("SQLite 資料庫檔案路徑；可使用完整絕對路徑或相對於目前工作目錄的路徑，例如 data/mydb.sqlite")] string dbPath)
         {
             var resp = new ToolResponse();
             try
@@ -167,9 +167,9 @@ namespace ConsoleApp_MAF
         //    return resp;
         //}
 
-        [Description("以 SQL 查詢資料（僅允許 SELECT），會回傳每列以欄位名稱對應值的物件陣列")]
-        public async Task<ToolResponse> Query([Description("資料庫檔案路徑")] string dbPath,
-                                              [Description("僅允許 SELECT 查詢")] string sql)
+        [Description("在 SQLite 資料庫執行唯讀查詢，回傳以欄位名稱對應值的 JSON 物件陣列。撰寫 SQL 前必須先使用 ListTables 或 GetTableSchemas 確認資料表與欄位名稱。")]
+        public async Task<ToolResponse> Query([Description("SQLite 資料庫檔案路徑；可使用完整絕對路徑或相對於目前工作目錄的路徑，例如 data/mydb.sqlite")] string dbPath,
+                                              [Description("唯讀 SQL；只能以 SELECT 或 WITH 開頭，禁止 INSERT、UPDATE、DELETE、DROP 等修改語句。必須加入 LIMIT（建議 LIMIT 100）以避免回傳資料過大。")] string sql)
         {
             var resp = new ToolResponse();
             try
