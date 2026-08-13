@@ -57,13 +57,13 @@ var option = new ChatOptions()
     //桌面的路徑是{Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory)}
     //""",
     Instructions = $"""
-    你是個Windows助理,所有回答要有禮貌以及使用繁體中文
+    你是個電腦助理,所有回答要有禮貌以及使用繁體中文
     """,
     Tools = 
     [
         ..tools,
         //..toolsFactory.GetTimeTools(),
-        //..toolsFactory.GetFileSystemTools()
+        ..toolsFactory.GetFileSystemTools()
     ],
 
 };
@@ -72,13 +72,9 @@ var gemma4client = new Gemma4ChatClient(m_ModelPath, m_MmProjPath);
 
 
 var skillsDir = Path.Combine(Directory.GetCurrentDirectory(), "skills");
-var fileOptions = new AgentFileSkillsSourceOptions
-{
-    ResourceFilter = context => false,  // 排除所有 resources
-    ScriptFilter = context => false,    // 排除所有 scripts
-};
 
-var agentSkillsProvider = new AgentSkillsProvider(skillsDir, fileOptions: fileOptions);
+
+var agentSkillsProvider = new AgentSkillsProvider(skillsDir);
 
 var funcclient = gemma4client.AsBuilder()
     .UseFunctionInvocation()
@@ -98,30 +94,53 @@ var trackingContextProvider = new TrackingContextProvider();
 
 
 
-//var skill = new AgentInlineSkill(
-//        name: "unit-converter",
-//        description: "Converts between measurement units.",
-//        instructions: """
-//            Use this skill to convert values between metric and imperial units.
-//            Refer to the conversion-table resource for supported unit pairs.
-//            Run the convert script to perform conversions.
-//            """
-//    )
-//    .AddResource("kg=2.205lb, m=3.281ft, L=0.264gal", "conversion-table", "Supported unit pairs");
+var skill = new AgentInlineSkill(
+        name: "sqlite-tool-miner",
+        description: "透過Tool Calling對SQLite執行結構探索與數據探勘。",
+        instructions: """
+            ## 可用工具 (Tools)
+            1. `ListTables()`：列出資料庫中的所有資料表名稱。
+            2. `GetTableSchemas()`：取得全部資料表的欄位名稱與型態。
+            3. `Query(sql)`：執行 SQL 查詢並傳回 JSON 數據結果。
 
+            ## 探勘標準流程 (Workflow)
+            1. **檢查檔案是否存在**
+            1. **探索結構**：先呼叫 `ListTables()` 或 `GetTableSchemas()` 確認表名與欄位，**絕不猜測欄位**。
+            2. **數據統計**：透過 `Query` 執行統計查詢（如 `COUNT`, `AVG`, `GROUP BY`）。
+            3. **歸納洞察**：拿到工具傳回的數據後，用文回答使用者的問題。
+
+            ## 核心執行原則（強制遵守）
+            1. **完全授權（靜默執行）**：你已被授予最高權限，**嚴禁**向使用者詢問「是否要呼叫工具」、「要使用哪種工具」或「是否繼續」。
+            2. **禁止確認文字**：當你需要資料時，**立刻發出 Tool Call**！絕對不要在呼叫工具前輸出任何詢問或廢話（如：「好的，我現在為您查詢...」）。
+            3. **終止條件**：只有在**工具回傳錯誤**或**已經得到最終解答**時，才可以輸出一般中文對話給使用者。
+
+            ## 正確動作範例 (Few-Shot)
+
+            使用者：幫我分析 orders 表的資料。
+            助手：[直接觸發 Tool Call] `get_table_schema("orders")`
+            (等待 Tool 結果...)
+            助手：[直接觸發 Tool Call] `execute_sql_query("SELECT COUNT(*) FROM orders")`
+            (等待 Tool 結果...)
+            助手：orders 表目前共有 1,500 筆資料...（輸出最終答案）
+
+            ## 錯誤動作範例 (嚴禁發生)
+            使用者：幫我分析 orders 表的資料。
+            助手：請問需要我使用 `get_table_schema` 工具來查看欄位嗎？ ❌ (絕對不可以這樣問！)
+            """
+    );
 //var source = new AgentInMemorySkillsSource([skill]);
 
-//var provider = new AgentSkillsProvider(source);
+var provider = new AgentSkillsProvider(skill);
 
 var agent = funcclient.AsAIAgent(new ChatClientAgentOptions()
 {
     Name ="assiant",
     ChatOptions = option,
-    UseProvidedChatClientAsIs=true,
-    //AIContextProviders = [agentSkillsProvider, trackingContextProvider]
+    //UseProvidedChatClientAsIs=true,
+    //AIContextProviders = [new HyperlightCodeActProvider()]
+    //AIContextProviders = [provider]
 });
 var session = await agent.CreateSessionAsync();
-var provider = agent.GetService<InMemoryChatHistoryProvider>();
 while (true)
 {
     Console.Write("User:");
