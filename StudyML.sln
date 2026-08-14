@@ -15,7 +15,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ConsoleApp_MAF", "ConsoleAp
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ConsoleApp_TTS", "ConsoleApp_TTS\ConsoleApp_TTS.csproj", "{D3575B47-691B-4E5C-A60F-4A1B17243273}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ChartClient_GGuf", "ChartClient_GGuf\ChartClient_GGuf.csproj", "{35C0CA71-F5BF-4D9C-91E0-511A1ED11A9F}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ChartClient_LLamaSharp", "ChartClient_GGuf\ChartClient_LLamaSharp.csproj", "{35C0CA71-F5BF-4D9C-91E0-511A1ED11A9F}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
