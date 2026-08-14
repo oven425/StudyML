@@ -151,7 +151,7 @@ namespace ConsoleApp_MAF
             };
             List<string> prompts = [];
             var strb = new StringBuilder();
-            var lastmsg = messages.LastOrDefault();
+            var lastmsg = messages.LastOrDefault(x=>x.AdditionalProperties==null);
             if (lastmsg != null)
             {
                 if (lastmsg.Role == ChatRole.Tool)

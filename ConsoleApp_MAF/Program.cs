@@ -59,12 +59,12 @@ var option = new ChatOptions()
     Instructions = $"""
     你是個電腦助理,所有回答要有禮貌以及使用繁體中文
     """,
-    Tools = 
-    [
-        ..tools,
-        //..toolsFactory.GetTimeTools(),
-        ..toolsFactory.GetFileSystemTools()
-    ],
+    //Tools = 
+    //[
+    //    ..tools,
+    //    //..toolsFactory.GetTimeTools(),
+    //    ..toolsFactory.GetFileSystemTools()
+    //],
 
 };
 
@@ -94,48 +94,54 @@ var trackingContextProvider = new TrackingContextProvider();
 
 
 
-var skill = new AgentInlineSkill(
-        name: "sqlite-tool-miner",
-        description: "透過Tool Calling對SQLite執行結構探索與數據探勘。",
-        instructions: """
-            ## 可用工具 (Tools)
-            1. `ListTables()`：列出資料庫中的所有資料表名稱。
-            2. `GetTableSchemas()`：取得全部資料表的欄位名稱與型態。
-            3. `Query(sql)`：執行 SQL 查詢並傳回 JSON 數據結果。
+//var skill = new AgentInlineSkill(
+//        name: "sqlite-tool-miner",
+//        description: "透過Tool Calling對SQLite執行結構探索與數據探勘。",
+//        instructions: """
+//            ## 可用工具 (Tools)
+//            1. `ListTables()`：列出資料庫中的所有資料表名稱。
+//            2. `GetTableSchemas()`：取得全部資料表的欄位名稱與型態。
+//            3. `Query(sql)`：執行 SQL 查詢並傳回 JSON 數據結果。
 
-            ## 探勘標準流程 (Workflow)
-            1. **檢查檔案是否存在**
-            1. **探索結構**：先呼叫 `ListTables()` 或 `GetTableSchemas()` 確認表名與欄位，**絕不猜測欄位**。
-            2. **數據統計**：透過 `Query` 執行統計查詢（如 `COUNT`, `AVG`, `GROUP BY`）。
-            3. **歸納洞察**：拿到工具傳回的數據後，用文回答使用者的問題。
+//            ## 探勘標準流程 (Workflow)
+//            1. **檢查檔案是否存在**
+//            1. **探索結構**：先呼叫 `ListTables()` 或 `GetTableSchemas()` 確認表名與欄位，**絕不猜測欄位**。
+//            2. **數據統計**：透過 `Query` 執行統計查詢（如 `COUNT`, `AVG`, `GROUP BY`）。
+//            3. **歸納洞察**：拿到工具傳回的數據後，用文回答使用者的問題。
 
-            ## 核心執行原則（強制遵守）
-            1. **完全授權（靜默執行）**：你已被授予最高權限，**嚴禁**向使用者詢問「是否要呼叫工具」、「要使用哪種工具」或「是否繼續」。
-            2. **禁止確認文字**：當你需要資料時，**立刻發出 Tool Call**！絕對不要在呼叫工具前輸出任何詢問或廢話（如：「好的，我現在為您查詢...」）。
-            3. **終止條件**：只有在**工具回傳錯誤**或**已經得到最終解答**時，才可以輸出一般中文對話給使用者。
+//            ## 核心執行原則（強制遵守）
+//            1. **完全授權（靜默執行）**：你已被授予最高權限，**嚴禁**向使用者詢問「是否要呼叫工具」、「要使用哪種工具」或「是否繼續」。
+//            2. **禁止確認文字**：當你需要資料時，**立刻發出 Tool Call**！絕對不要在呼叫工具前輸出任何詢問或廢話（如：「好的，我現在為您查詢...」）。
+//            3. **終止條件**：只有在**工具回傳錯誤**或**已經得到最終解答**時，才可以輸出一般中文對話給使用者。
 
-            ## 正確動作範例 (Few-Shot)
+//            ## 正確動作範例 (Few-Shot)
 
-            使用者：幫我分析 orders 表的資料。
-            助手：[直接觸發 Tool Call] `get_table_schema("orders")`
-            (等待 Tool 結果...)
-            助手：[直接觸發 Tool Call] `execute_sql_query("SELECT COUNT(*) FROM orders")`
-            (等待 Tool 結果...)
-            助手：orders 表目前共有 1,500 筆資料...（輸出最終答案）
+//            使用者：幫我分析 orders 表的資料。
+//            助手：[直接觸發 Tool Call] `get_table_schema("orders")`
+//            (等待 Tool 結果...)
+//            助手：[直接觸發 Tool Call] `execute_sql_query("SELECT COUNT(*) FROM orders")`
+//            (等待 Tool 結果...)
+//            助手：orders 表目前共有 1,500 筆資料...（輸出最終答案）
 
-            ## 錯誤動作範例 (嚴禁發生)
-            使用者：幫我分析 orders 表的資料。
-            助手：請問需要我使用 `get_table_schema` 工具來查看欄位嗎？ ❌ (絕對不可以這樣問！)
-            """
-    );
+//            ## 錯誤動作範例 (嚴禁發生)
+//            使用者：幫我分析 orders 表的資料。
+//            助手：請問需要我使用 `get_table_schema` 工具來查看欄位嗎？ ❌ (絕對不可以這樣問！)
+//            """
+//    );
 //var source = new AgentInMemorySkillsSource([skill]);
 
-var provider = new AgentSkillsProvider(skill);
-
+//var provider = new AgentSkillsProvider(skill);
+var todoProvider = new TodoProvider(new TodoProviderOptions()
+{
+    SuppressTodoListMessage = false
+});
+var modeProvider = new AgentModeProvider(
+            new AgentModeProviderOptions { DefaultMode = "plan" });
 var agent = funcclient.AsAIAgent(new ChatClientAgentOptions()
 {
     Name ="assiant",
     ChatOptions = option,
+    AIContextProviders = [todoProvider, modeProvider, trackingContextProvider]
     //UseProvidedChatClientAsIs=true,
     //AIContextProviders = [new HyperlightCodeActProvider()]
     //AIContextProviders = [provider]
@@ -156,6 +162,11 @@ while (true)
     .SelectMany(x => x.Contents)
     .OfType<ToolApprovalRequestContent>()
     .ToList();
+    var todos = await todoProvider.GetAllTodosAsync(session);
+    foreach (var todo in todos)
+    {
+        
+    }
     if(functionApprovalRequests.Count >0)
     {
         foreach (var oo in functionApprovalRequests)
