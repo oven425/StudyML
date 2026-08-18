@@ -2,6 +2,7 @@
 using LLama.Common;
 using LLama.Native;
 using Microsoft.Extensions.AI;
+using System.Linq;
 using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json;
@@ -52,23 +53,106 @@ public sealed class Gemma4(string modelPath, string? multimodalProjectorPath = n
         }
     }
 
+    private const string ToolCallStart = "<|tool_call>";
+    private const string ToolCallEnd = "<tool_call|>";
+
     public async IAsyncEnumerable<ChatResponseUpdate> GetStreamingResponseAsync(
         IEnumerable<ChatMessage> messages,
         ChatOptions? options = null,
         [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        var response = await GetResponseAsync(messages, options, cancellationToken).ConfigureAwait(false);
-        foreach (var message in response.Messages)
+        ArgumentNullException.ThrowIfNull(messages);
+        ThrowIfDisposed();
+
+        await _inferenceLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
         {
-            foreach (var content in message.Contents.OfType<TextContent>())
+            await InitializeAsync(options, cancellationToken).ConfigureAwait(false);
+
+            var executor = _executor ?? throw new InvalidOperationException("The model executor was not initialized.");
+            var prompts = BuildPrompts(messages, executor);
+            var usage = new UsageDetails();
+
+            var fullText = new StringBuilder(); 
+            var pending = new StringBuilder();
+            var inToolCall = false;
+
+            foreach (var prompt in prompts)
             {
-                yield return new ChatResponseUpdate(ChatRole.Assistant, content.Text)
+                var submittedTokenCount = string.IsNullOrEmpty(prompt)
+                    ? 0
+                    : _context!.Tokenize(prompt, addBos: false, special: true).Length;
+                var before = _context!.NativeHandle.GetTimings();
+                var inferenceParams = string.IsNullOrEmpty(prompt) ? _embeddingInferenceParams! : _inferenceParams!;
+
+                await foreach (var token in executor.InferAsync(prompt, inferenceParams, cancellationToken).ConfigureAwait(false))
                 {
-                    FinishReason = response.FinishReason
-                };
+                    fullText.Append(token);
+
+                    if (inToolCall)
+                    {
+                        if (fullText.ToString().IndexOf(ToolCallEnd, StringComparison.Ordinal) >= 0)
+                        {
+                            var toolCallResponse = ParseToolCalls(fullText.ToString());
+                            if (toolCallResponse is not null)
+                            {
+                                foreach (var content in toolCallResponse.Messages.SelectMany(m => m.Contents))
+                                {
+                                    yield return new ChatResponseUpdate(ChatRole.Assistant, [content])
+                                    {
+                                        FinishReason = toolCallResponse.FinishReason
+                                    };
+                                }
+                            }
+
+                            inToolCall = false;
+                        }
+
+                        continue;
+                    }
+
+                    pending.Append(token);
+                    var pendingText = pending.ToString();
+                    var markerIndex = pendingText.IndexOf(ToolCallStart, StringComparison.Ordinal);
+
+                    if (markerIndex >= 0)
+                    {
+                        var precedingText = pendingText[..markerIndex];
+                        if (precedingText.Length > 0)
+                        {
+                            yield return new ChatResponseUpdate(ChatRole.Assistant, precedingText);
+                        }
+
+                        pending.Clear();
+                        inToolCall = true;
+                        continue;
+                    }
+
+                    if (!CouldBePrefixOfToolCallMarker(pendingText))
+                    {
+                        yield return new ChatResponseUpdate(ChatRole.Assistant, pendingText);
+                        pending.Clear();
+                    }
+                }
+
+                AddUsage(usage, before, _context.NativeHandle.GetTimings(), submittedTokenCount);
             }
+
+            if (pending.Length > 0)
+            {
+                yield return new ChatResponseUpdate(ChatRole.Assistant, pending.ToString());
+            }
+
+            yield return new ChatResponseUpdate(ChatRole.Assistant, [new UsageContent(usage)]);
+        }
+        finally
+        {
+            _inferenceLock.Release();
         }
     }
+
+    private static bool CouldBePrefixOfToolCallMarker(string text)
+        => text.Length <= ToolCallStart.Length && ToolCallStart.StartsWith(text, StringComparison.Ordinal);
 
     public object? GetService(Type serviceType, object? serviceKey = null)
         => serviceType.IsAssignableFrom(GetType()) || serviceType == typeof(IChatClient) ? this : null;
@@ -164,6 +248,9 @@ public sealed class Gemma4(string modelPath, string? multimodalProjectorPath = n
 
         foreach (var prompt in prompts)
         {
+            // Total tokens submitted for this turn; compared against tokens actually
+            // (re-)evaluated by llama.cpp to estimate how many were served from KV cache.
+            var submittedTokenCount = string.IsNullOrEmpty(prompt) ? 0 : _context!.Tokenize(prompt, addBos: false, special: true).Length;
             var before = _context!.NativeHandle.GetTimings();
             output.Clear();
             var inferenceParams = string.IsNullOrEmpty(prompt) ? _embeddingInferenceParams! : _inferenceParams!;
@@ -172,7 +259,7 @@ public sealed class Gemma4(string modelPath, string? multimodalProjectorPath = n
                 output.Append(token);
             }
 
-            AddUsage(usage, before, _context.NativeHandle.GetTimings());
+            AddUsage(usage, before, _context.NativeHandle.GetTimings(), submittedTokenCount);
         }
 
         return output.ToString();
@@ -529,13 +616,25 @@ public sealed class Gemma4(string modelPath, string? multimodalProjectorPath = n
         }
     }
 
-    private static void AddUsage(UsageDetails usage, LLamaPerfContextTimings before, LLamaPerfContextTimings after)
+    private static void AddUsage(UsageDetails usage, LLamaPerfContextTimings before, LLamaPerfContextTimings after, int submittedTokenCount)
     {
-        var inputTokens = after.PrompTokensEvaluated - before.PrompTokensEvaluated;
+        var evaluatedTokens = after.PrompTokensEvaluated - before.PrompTokensEvaluated;
         var outputTokens = after.TokensEvaluated - before.TokensEvaluated;
+
+        // Tokens llama.cpp did not have to re-evaluate are assumed served from the KV cache.
+        var cachedTokens = Math.Max(0, submittedTokenCount - evaluatedTokens);
+        var inputTokens = evaluatedTokens + cachedTokens;
+
+        // CachedInputTokenCount is counted as part of InputTokenCount, per Microsoft.Extensions.AI conventions.
         usage.InputTokenCount = (usage.InputTokenCount ?? 0) + inputTokens;
         usage.OutputTokenCount = (usage.OutputTokenCount ?? 0) + outputTokens;
+        usage.CachedInputTokenCount = (usage.CachedInputTokenCount ?? 0) + cachedTokens;
         usage.TotalTokenCount = (usage.InputTokenCount ?? 0) + (usage.OutputTokenCount ?? 0);
+
+        var totalInputTokens = usage.InputTokenCount ?? 0;
+        var cacheHitRate = totalInputTokens == 0 ? 0d : (usage.CachedInputTokenCount ?? 0) / (double)totalInputTokens;
+        usage.AdditionalCounts ??= [];
+        usage.AdditionalCounts["CacheHitRate"] = (long)Math.Round(cacheHitRate * 100);
     }
 
     private void ThrowIfDisposed()

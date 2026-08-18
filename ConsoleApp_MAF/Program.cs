@@ -145,6 +145,17 @@ var agent = funcclient.AsAIAgent(new ChatClientAgentOptions()
     //AIContextProviders = [provider]
 });
 var session = await agent.CreateSessionAsync();
+
+async IAsyncEnumerable<Microsoft.Agents.AI.AgentResponseUpdate> PrintAndForwardAsync(
+    IAsyncEnumerable<Microsoft.Agents.AI.AgentResponseUpdate> source)
+{
+    await foreach (var update in source)
+    {
+        Console.Write(update.Text);
+        yield return update;
+    }
+}
+
 while (true)
 {
     Console.Write("User:");
@@ -154,8 +165,12 @@ while (true)
         break;
     }
     var conversationStopwatch = System.Diagnostics.Stopwatch.StartNew();
-    var runresp = await agent.RunAsync(question, session);
+
     Console.Write("Assistant:");
+    var runresp = await PrintAndForwardAsync(agent.RunStreamingAsync(question, session))
+        .ToAgentResponseAsync();
+    Console.WriteLine();
+
     var functionApprovalRequests = runresp.Messages
     .SelectMany(x => x.Contents)
     .OfType<ToolApprovalRequestContent>()
@@ -163,19 +178,23 @@ while (true)
     var todos = await todoProvider.GetAllTodosAsync(session);
     foreach (var todo in todos)
     {
-        
+
     }
     if(functionApprovalRequests.Count >0)
     {
         foreach (var oo in functionApprovalRequests)
         {
             var approvalMessage = new ChatMessage(ChatRole.User, [oo.CreateResponse(true)]);
-            Console.WriteLine(await agent.RunAsync(approvalMessage, session));
+
+            var approvalResponse = await PrintAndForwardAsync(agent.RunStreamingAsync(approvalMessage, session))
+                .ToAgentResponseAsync();
+            Console.WriteLine();
+
+            foreach (var approvalResponseMessage in approvalResponse.Messages)
+            {
+                runresp.Messages.Add(approvalResponseMessage);
+            }
         }
-    }
-    else
-    {
-        Console.WriteLine(runresp.Text);
     }
 
     conversationStopwatch.Stop();
@@ -188,6 +207,7 @@ while (true)
         var tokensPerSecond = conversationStopwatch.Elapsed.TotalSeconds > 0
             ? totalTokens / conversationStopwatch.Elapsed.TotalSeconds
             : 0d;
+
 
         Console.WriteLine($"""
             [本次對話 Token 統計]
