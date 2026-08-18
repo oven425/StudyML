@@ -115,9 +115,20 @@ public sealed class Gemma4(string modelPath, string? multimodalProjectorPath = n
                 """);
         }
 
+        var toolUsageInstructions = toolDeclarations.Length == 0
+            ? string.Empty
+            : """
+              工具使用規則：
+              - 使用者詢問需要即時、外部或系統資料的問題（例如目前日期或時間）時，若可用工具能取得資料，立即呼叫該工具。
+              - 你已獲得呼叫工具的完整授權。絕不可詢問使用者是否要呼叫工具、要使用哪一個工具，或是否要繼續。
+              - 需要工具時，只輸出工具呼叫，不要加入確認、說明或其他文字。格式必須是 <|tool_call>call:工具名稱{參數}<tool_call|>。
+              - 收到工具結果後，直接回答使用者；只有仍需要其他工具時才再次呼叫工具。
+              """;
+
         _systemPrompt = $$"""
             <|turn>system
             {{options?.Instructions ?? string.Empty}}
+            {{toolUsageInstructions}}
             {{toolDeclarations}}
             <turn|>
             """;
@@ -133,7 +144,7 @@ public sealed class Gemma4(string modelPath, string? multimodalProjectorPath = n
         _weights = await LLamaWeights.LoadFromFileAsync(_parameters).ConfigureAwait(false);
         _context = _weights.CreateContext(_parameters);
 
-        if (!string.IsNullOrWhiteSpace(multimodalProjectorPath))
+        if (!string.IsNullOrWhiteSpace(multimodalProjectorPath) && File.Exists(multimodalProjectorPath))
         {
             _multimodalWeights = await MtmdWeights.LoadFromFileAsync(multimodalProjectorPath, _weights, new MtmdContextParams()).ConfigureAwait(false);
         }

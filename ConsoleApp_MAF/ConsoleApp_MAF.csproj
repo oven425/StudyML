@@ -17,4 +17,8 @@
     <PackageReference Include="Microsoft.Extensions.AI.OpenAI" Version="10.9.0" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\ChartClient_GGuf\ChartClient_LLamaSharp.csproj" />
+  </ItemGroup>
+
 </Project>

@@ -21,8 +21,6 @@ Console.WriteLine("Hello, World!");
 string m_ModelPath = @"..\..\..\..\gguf_gemma4\gemma-4-E2B-it-Q4_K_M.gguf";
 string m_MmProjPath = @"..\..\..\..\gguf_gemma4\mmproj-gemma-4-E2B-it-Q8_0.gguf";
 
-//await Audio.To("123.mp3");
-//using var codeAct = new HyperlightCodeActProvider(HyperlightCodeActProviderOptions.CreateForWasm(guestPath));
 OpenMeteo om = new();
 ComputerInfo info = new();
 FileOperation fs = new();
@@ -59,17 +57,17 @@ var option = new ChatOptions()
     Instructions = $"""
     你是個電腦助理,所有回答要有禮貌以及使用繁體中文
     """,
-    //Tools = 
-    //[
-    //    ..tools,
-    //    //..toolsFactory.GetTimeTools(),
-    //    ..toolsFactory.GetFileSystemTools()
-    //],
+    Tools =
+    [
+        ..tools,
+        ..toolsFactory.GetTimeTools(),
+        //..toolsFactory.GetFileSystemTools()
+    ],
 
 };
 
-var gemma4client = new Gemma4ChatClient(m_ModelPath, m_MmProjPath);
-
+//var gemma4client = new Gemma4ChatClient(m_ModelPath, m_MmProjPath);
+var gemma4client = new QSoft.GGUF.Gemma4(m_ModelPath, m_MmProjPath);
 
 var skillsDir = Path.Combine(Directory.GetCurrentDirectory(), "skills");
 
@@ -141,7 +139,7 @@ var agent = funcclient.AsAIAgent(new ChatClientAgentOptions()
 {
     Name ="assiant",
     ChatOptions = option,
-    AIContextProviders = [todoProvider, modeProvider, trackingContextProvider]
+    //AIContextProviders = [todoProvider, modeProvider, trackingContextProvider]
     //UseProvidedChatClientAsIs=true,
     //AIContextProviders = [new HyperlightCodeActProvider()]
     //AIContextProviders = [provider]
@@ -155,9 +153,9 @@ while (true)
     {
         break;
     }
+    var conversationStopwatch = System.Diagnostics.Stopwatch.StartNew();
     var runresp = await agent.RunAsync(question, session);
     Console.Write("Assistant:");
-    Console.WriteLine($"{runresp.Usage?.TotalTokenCount}");
     var functionApprovalRequests = runresp.Messages
     .SelectMany(x => x.Contents)
     .OfType<ToolApprovalRequestContent>()
@@ -179,7 +177,59 @@ while (true)
     {
         Console.WriteLine(runresp.Text);
     }
-    
+
+    conversationStopwatch.Stop();
+    Console.WriteLine($"本次對話耗時: {conversationStopwatch.Elapsed.TotalSeconds:F2} 秒");
+
+    if (runresp.Usage is { } usage)
+    {
+        var totalTokens = usage.TotalTokenCount ??
+            (usage.InputTokenCount ?? 0) + (usage.OutputTokenCount ?? 0);
+        var tokensPerSecond = conversationStopwatch.Elapsed.TotalSeconds > 0
+            ? totalTokens / conversationStopwatch.Elapsed.TotalSeconds
+            : 0d;
+
+        Console.WriteLine($"""
+            [本次對話 Token 統計]
+            Input tokens: {usage.InputTokenCount ?? 0} Output tokens: {usage.OutputTokenCount ?? 0}
+            Total tokens: {totalTokens} TOK/s: {tokensPerSecond:F2}
+            """);
+    }
+
+    var toolCalls = runresp.Messages
+        .SelectMany(message => message.Contents)
+        .OfType<FunctionCallContent>()
+        .ToList();
+    var toolResponses = runresp.Messages
+        .SelectMany(message => message.Contents)
+        .OfType<FunctionResultContent>()
+        .ToList();
+
+    Console.WriteLine("[本次對話 Tool Calls]");
+    if (toolCalls.Count == 0)
+    {
+        Console.WriteLine("無");
+    }
+    else
+    {
+        foreach (var toolCall in toolCalls)
+        {
+            Console.WriteLine($"Id={toolCall.CallId}, Tool={toolCall.Name}, Arguments={JsonSerializer.Serialize(toolCall.Arguments)}");
+        }
+    }
+
+    Console.WriteLine("[本次對話 Tool Responses]");
+    if (toolResponses.Count == 0)
+    {
+        Console.WriteLine("無");
+    }
+    else
+    {
+        foreach (var toolResponse in toolResponses)
+        {
+            Console.WriteLine($"CallId={toolResponse.CallId}, Result={JsonSerializer.Serialize(toolResponse.Result)}");
+        }
+    }
 }
 
 Console.WriteLine("Save this session? (y/n)");
@@ -334,10 +384,6 @@ public class IpApiResponse
     public double Lon { get; set; }
 }
 
-//public class ToolResponse<T>: ToolResponse
-//{
-//    public T? Data { set; get; }
-//}
 public class ToolResponse
 {
     [JsonPropertyName("isFail")]

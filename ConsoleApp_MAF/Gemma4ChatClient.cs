@@ -96,7 +96,7 @@ namespace ConsoleApp_MAF
                 };
                 this.m_Weights = await LLamaWeights.LoadFromFileAsync(this.m_Parameters);
                 this.m_Context = this.m_Weights.CreateContext(this.m_Parameters);
-                if(!string.IsNullOrEmpty(mtm_modepath))
+                if(!string.IsNullOrEmpty(mtm_modepath) && File.Exists(mtm_modepath))
                 {
                     this.m_MtmdContextParams = new MtmdContextParams();
                     this.m_MtmdWeights = await MtmdWeights.LoadFromFileAsync(mtm_modepath, this.m_Weights, this.m_MtmdContextParams);
