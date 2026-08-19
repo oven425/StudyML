@@ -30,7 +30,7 @@ namespace App_gguf
             InitializeComponent();
             _ = this.LLamaCpp.New();
             SetUpCustomTitleBar();
-            SetWindowSize(450, 800); // 16:9
+            SetWindowSize(400, 640); // 10:16
         }
 
         public MainUI LLamaCpp { get; set; } = new MainUI();

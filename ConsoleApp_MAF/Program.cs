@@ -1,5 +1,6 @@
 ﻿// See https://aka.ms/new-console-template for more information
 using AgentFrameworkToolkit.Tools;
+using AgentFrameworkToolkit.Tools.Common;
 using ConsoleApp_MAF;
 using LLama;
 using LLama.Common;
@@ -34,16 +35,16 @@ var tools = new AIFunction[]
     //AIFunctionFactory.Create(info.GetCurrentDateTime),
     //AIFunctionFactory.Create(info.GetCurrentUser),
     //AIFunctionFactory.Create(info.GetFolder),
-    AIFunctionFactory.Create(info.GetFullName),
+    //AIFunctionFactory.Create(info.GetFullName),
     //AIFunctionFactory.Create(info.list_directory),
     //AIFunctionFactory.Create(fs.ReadTxt),
     //AIFunctionFactory.Create(fs.ReadImage),
     //AIFunctionFactory.Create(fs.GetFullPath),
-    //AIFunctionFactory.Create(get_currentlocation),
-    //AIFunctionFactory.Create(om.GetCurrent),
-    AIFunctionFactory.Create(sqlitedb.ListTables),
-    AIFunctionFactory.Create(sqlitedb.GetTableSchemas),
-    AIFunctionFactory.Create(sqlitedb.Query)
+    AIFunctionFactory.Create(get_currentlocation),
+    AIFunctionFactory.Create(om.GetCurrent),
+    //AIFunctionFactory.Create(sqlitedb.ListTables),
+    //AIFunctionFactory.Create(sqlitedb.GetTableSchemas),
+    //AIFunctionFactory.Create(sqlitedb.Query)
 
 };
 
@@ -60,8 +61,26 @@ var option = new ChatOptions()
     Tools =
     [
         ..tools,
-        ..toolsFactory.GetTimeTools(),
-        //..toolsFactory.GetFileSystemTools()
+        //..toolsFactory.GetTimeTools(),
+        ..toolsFactory.GetFileSystemTools(new GetFileSystemToolsOptions(){
+            DeleteFolder=false,
+            CopyFile=false,
+            MoveFile=false,
+            DeleteFile=false,
+            CreateFile=false,
+            CreateFolder=false,
+            CopyFolder=false,
+            FileSystemToolsOptions=new FileSystemToolsOptions()
+            {
+                ConfinedToTheseFolderPaths = 
+                [Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory)]
+            }
+        }),
+        //..toolsFactory.GetWebsiteTools(),
+        //..toolsFactory.GetHttpClientTools(new GetHttpClientToolsOptions
+        //{
+        //    HttpClientToolsOptions = new HttpClientToolsOptions { IncludeHeaders = true }
+        //})
     ],
 
 };
@@ -146,8 +165,7 @@ var agent = funcclient.AsAIAgent(new ChatClientAgentOptions()
 });
 var session = await agent.CreateSessionAsync();
 
-async IAsyncEnumerable<Microsoft.Agents.AI.AgentResponseUpdate> PrintAndForwardAsync(
-    IAsyncEnumerable<Microsoft.Agents.AI.AgentResponseUpdate> source)
+async IAsyncEnumerable<AgentResponseUpdate> PrintAndForwardAsync(IAsyncEnumerable<AgentResponseUpdate> source)
 {
     await foreach (var update in source)
     {
@@ -175,11 +193,7 @@ while (true)
     .SelectMany(x => x.Contents)
     .OfType<ToolApprovalRequestContent>()
     .ToList();
-    var todos = await todoProvider.GetAllTodosAsync(session);
-    foreach (var todo in todos)
-    {
 
-    }
     if(functionApprovalRequests.Count >0)
     {
         foreach (var oo in functionApprovalRequests)
@@ -198,7 +212,7 @@ while (true)
     }
 
     conversationStopwatch.Stop();
-    Console.WriteLine($"本次對話耗時: {conversationStopwatch.Elapsed.TotalSeconds:F2} 秒");
+    Console.WriteLine($"----本次對話耗時: {conversationStopwatch.Elapsed.TotalSeconds:F2} 秒-----");
 
     if (runresp.Usage is { } usage)
     {
@@ -250,6 +264,8 @@ while (true)
             Console.WriteLine($"CallId={toolResponse.CallId}, Result={JsonSerializer.Serialize(toolResponse.Result)}");
         }
     }
+    Console.WriteLine("-----");
+    Console.WriteLine();
 }
 
 Console.WriteLine("Save this session? (y/n)");
