@@ -4,6 +4,7 @@
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:local="using:App_gguf"
+    xmlns:controls="using:CommunityToolkit.WinUI.UI.Controls"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d"
@@ -21,8 +22,6 @@
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
-
-        <!-- Custom title bar drag region: transparent so it shows the window/Mica background -->
         <Grid x:Name="AppTitleBar" Grid.Row="0" Background="Transparent">
             <TextBlock
                 x:Name="AppTitleTextBlock"
@@ -31,7 +30,6 @@
                 Style="{StaticResource CaptionTextBlockStyle}"
                 Text="GitHub Copilot Chat" />
         </Grid>
-
         <Grid Grid.Row="1" Margin="0,0,0,8">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" />
@@ -53,7 +51,11 @@
         </Grid>
 
         <Grid Grid.Row="2">
-            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="12">
+            <StackPanel
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                Spacing="12"
+                Visibility="{x:Bind EmptyStateVisibility(LLamaCpp.Historys.Count), Mode=OneWay}">
                 <FontIcon
                     HorizontalAlignment="Center"
                     FontFamily="Segoe Fluent Icons"
@@ -75,6 +77,116 @@
                     TextWrapping="Wrap"
                     Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
             </StackPanel>
+
+            <ScrollViewer
+                x:Name="ConversationScrollViewer"
+                Padding="0,0,0,8"
+                HorizontalAlignment="Stretch"
+                VerticalAlignment="Stretch"
+                HorizontalScrollMode="Disabled"
+                HorizontalScrollBarVisibility="Disabled"
+                VerticalScrollMode="Enabled"
+                VerticalScrollBarVisibility="Auto"
+                Visibility="{x:Bind ConversationVisibility(LLamaCpp.Historys.Count), Mode=OneWay}">
+                <ItemsRepeater
+                    x:Name="ConversationList"
+                    ItemsSource="{x:Bind LLamaCpp.Historys}">
+                    <ItemsRepeater.Layout>
+                        <StackLayout />
+                    </ItemsRepeater.Layout>
+                    <ItemsRepeater.ItemTemplate>
+                        <local:HistoryTemplateSelector>
+                            <local:HistoryTemplateSelector.UserTemplate>
+                                <DataTemplate x:DataType="local:History">
+                                    <Border
+                                        Margin="40,4,0,4"
+                                        Padding="10,6"
+                                        HorizontalAlignment="Right"
+                                        Background="{ThemeResource SystemControlHighlightAccentBrush}"
+                                        CornerRadius="8">
+                                        <TextBlock
+                                            Text="{x:Bind Message, Mode=OneWay}"
+                                            TextWrapping="Wrap"
+                                            Foreground="White" />
+                                    </Border>
+                                </DataTemplate>
+                            </local:HistoryTemplateSelector.UserTemplate>
+                            <local:HistoryTemplateSelector.AssistantTemplate>
+                                <DataTemplate x:DataType="local:History">
+                                    <Border
+                                        Margin="0,4,40,4"
+                                        Padding="10,6"
+                                        HorizontalAlignment="Left"
+                                        Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                        BorderThickness="1"
+                                        CornerRadius="8">
+                                        <controls:MarkdownTextBlock Text="{x:Bind Message, Mode=OneWay}" />
+                                    </Border>
+                                </DataTemplate>
+                            </local:HistoryTemplateSelector.AssistantTemplate>
+                            <local:HistoryTemplateSelector.ToolCallTemplate>
+                                <DataTemplate x:DataType="local:History">
+                                    <Border
+                                        Margin="20,4"
+                                        Padding="4"
+                                        HorizontalAlignment="Stretch"
+                                        Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                        BorderThickness="1"
+                                        CornerRadius="6">
+                                        <Expander
+                                            HorizontalAlignment="Stretch"
+                                            HorizontalContentAlignment="Stretch"
+                                            IsExpanded="False">
+                                            <Expander.Header>
+                                                <TextBlock
+                                                    Text="{x:Bind Title, Mode=OneWay}"
+                                                    Style="{StaticResource CaptionTextBlockStyle}"
+                                                    FontWeight="SemiBold"
+                                                    Foreground="{ThemeResource SystemControlHighlightAccentBrush}" />
+                                            </Expander.Header>
+                                            <TextBlock
+                                                Margin="8,4,8,8"
+                                                Text="{x:Bind Message, Mode=OneWay}"
+                                                TextWrapping="Wrap" />
+                                        </Expander>
+                                    </Border>
+                                </DataTemplate>
+                            </local:HistoryTemplateSelector.ToolCallTemplate>
+                            <local:HistoryTemplateSelector.ToolResultTemplate>
+                                <DataTemplate x:DataType="local:History">
+                                    <Border
+                                        Margin="20,4"
+                                        Padding="4"
+                                        HorizontalAlignment="Stretch"
+                                        Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                        BorderThickness="1"
+                                        CornerRadius="6">
+                                        <Expander
+                                            HorizontalAlignment="Stretch"
+                                            HorizontalContentAlignment="Stretch"
+                                            IsExpanded="False">
+                                            <Expander.Header>
+                                                <TextBlock
+                                                    Text="{x:Bind Title, Mode=OneWay}"
+                                                    Style="{StaticResource CaptionTextBlockStyle}"
+                                                    FontWeight="SemiBold"
+                                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                            </Expander.Header>
+                                            <TextBlock
+                                                Margin="8,4,8,8"
+                                                Text="{x:Bind Message, Mode=OneWay}"
+                                                TextWrapping="Wrap" />
+                                        </Expander>
+                                    </Border>
+                                </DataTemplate>
+                            </local:HistoryTemplateSelector.ToolResultTemplate>
+                        </local:HistoryTemplateSelector>
+                    </ItemsRepeater.ItemTemplate>
+                </ItemsRepeater>
+            </ScrollViewer>
         </Grid>
 
         <Border
@@ -104,22 +216,34 @@
                 </StackPanel>
 
                 <TextBox
+                    x:Name="InputTextBox"
                     Grid.Row="1"
                     PlaceholderText="Ask Copilot"
                     AcceptsReturn="True"
                     TextWrapping="Wrap"
                     MinHeight="100"
-                    BorderThickness="0" />
+                    BorderThickness="0"
+                    Text="{x:Bind LLamaCpp.InputText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                    IsEnabled="{x:Bind LLamaCpp.IsInputEnabled, Mode=OneWay}"
+                    KeyDown="InputTextBox_KeyDown" />
 
                 <Grid Grid.Row="2">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
+                    <TextBlock
+                        Grid.Column="0"
+                        VerticalAlignment="Center"
+                        Style="{StaticResource CaptionTextBlockStyle}"
+                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                        Text="{x:Bind LLamaCpp.TokenStatus, Mode=OneWay}"
+                        TextTrimming="CharacterEllipsis" />
                     <Button
                         Grid.Column="1"
                         AutomationProperties.Name="Send message"
-                        ToolTipService.ToolTip="Send message">
+                        ToolTipService.ToolTip="Send message"
+                        Command="{x:Bind LLamaCpp.SendCommand}">
                         <SymbolIcon Symbol="Send" />
                     </Button>
                 </Grid>

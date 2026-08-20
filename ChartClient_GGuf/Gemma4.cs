@@ -17,6 +17,9 @@ public sealed class Gemma4(string modelPath, string? multimodalProjectorPath = n
     {
         Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping
     };
+    private readonly StringBuilder _fullText = new();
+    private readonly StringBuilder _pending = new();
+    private readonly StringBuilder _output = new();
 
     private ModelParams? _parameters;
     private LLamaWeights? _weights;
@@ -29,10 +32,7 @@ public sealed class Gemma4(string modelPath, string? multimodalProjectorPath = n
     private bool _isFirstTurn = true;
     private bool _disposed;
 
-    public async Task<ChatResponse> GetResponseAsync(
-        IEnumerable<ChatMessage> messages,
-        ChatOptions? options = null,
-        CancellationToken cancellationToken = default)
+    public async Task<ChatResponse> GetResponseAsync(IEnumerable<ChatMessage> messages, ChatOptions? options = null, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(messages);
         ThrowIfDisposed();
@@ -56,8 +56,7 @@ public sealed class Gemma4(string modelPath, string? multimodalProjectorPath = n
     private const string ToolCallStart = "<|tool_call>";
     private const string ToolCallEnd = "<tool_call|>";
 
-    public async IAsyncEnumerable<ChatResponseUpdate> GetStreamingResponseAsync(
-        IEnumerable<ChatMessage> messages, ChatOptions? options = null,
+    public async IAsyncEnumerable<ChatResponseUpdate> GetStreamingResponseAsync(IEnumerable<ChatMessage> messages, ChatOptions? options = null,
         [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(messages);
@@ -72,8 +71,8 @@ public sealed class Gemma4(string modelPath, string? multimodalProjectorPath = n
             var prompts = BuildPrompts(messages, executor);
             var usage = new UsageDetails();
 
-            var fullText = new StringBuilder(); 
-            var pending = new StringBuilder();
+            _fullText.Clear();
+            _pending.Clear();
             var inToolCall = false;
 
             foreach (var prompt in prompts)
@@ -86,13 +85,16 @@ public sealed class Gemma4(string modelPath, string? multimodalProjectorPath = n
 
                 await foreach (var token in executor.InferAsync(prompt, inferenceParams, cancellationToken).ConfigureAwait(false))
                 {
-                    fullText.Append(token);
+                    var previousLength = _fullText.Length;
+                    _fullText.Append(token);
 
                     if (inToolCall)
                     {
-                        if (fullText.ToString().IndexOf(ToolCallEnd, StringComparison.Ordinal) >= 0)
+                        var searchStart = Math.Max(0, previousLength - (ToolCallEnd.Length - 1));
+                        var window = _fullText.ToString(searchStart, _fullText.Length - searchStart);
+                        if (window.IndexOf(ToolCallEnd, StringComparison.Ordinal) >= 0)
                         {
-                            var toolCallResponse = ParseToolCalls(fullText.ToString());
+                            var toolCallResponse = ParseToolCalls(_fullText.ToString());
                             if (toolCallResponse is not null)
                             {
                                 foreach (var content in toolCallResponse.Messages.SelectMany(m => m.Contents))
@@ -110,8 +112,8 @@ public sealed class Gemma4(string modelPath, string? multimodalProjectorPath = n
                         continue;
                     }
 
-                    pending.Append(token);
-                    var pendingText = pending.ToString();
+                    _pending.Append(token);
+                    var pendingText = _pending.ToString();
                     var markerIndex = pendingText.IndexOf(ToolCallStart, StringComparison.Ordinal);
 
                     if (markerIndex >= 0)
@@ -122,7 +124,7 @@ public sealed class Gemma4(string modelPath, string? multimodalProjectorPath = n
                             yield return new ChatResponseUpdate(ChatRole.Assistant, precedingText);
                         }
 
-                        pending.Clear();
+                        _pending.Clear();
                         inToolCall = true;
                         continue;
                     }
@@ -130,16 +132,16 @@ public sealed class Gemma4(string modelPath, string? multimodalProjectorPath = n
                     if (!CouldBePrefixOfToolCallMarker(pendingText))
                     {
                         yield return new ChatResponseUpdate(ChatRole.Assistant, pendingText);
-                        pending.Clear();
+                        _pending.Clear();
                     }
                 }
 
                 AddUsage(usage, before, _context.NativeHandle.GetTimings(), submittedTokenCount);
             }
 
-            if (pending.Length > 0)
+            if (_pending.Length > 0)
             {
-                yield return new ChatResponseUpdate(ChatRole.Assistant, pending.ToString());
+                yield return new ChatResponseUpdate(ChatRole.Assistant, _pending.ToString());
             }
 
             yield return new ChatResponseUpdate(ChatRole.Assistant, [new UsageContent(usage)]);
@@ -204,7 +206,7 @@ public sealed class Gemma4(string modelPath, string? multimodalProjectorPath = n
               工具使用規則：
               - 使用者詢問需要即時、外部或系統資料的問題（例如目前日期或時間）時，若可用工具能取得資料，立即呼叫該工具。
               - 你已獲得呼叫工具的完整授權。絕不可詢問使用者是否要呼叫工具、要使用哪一個工具，或是否要繼續。
-              - 需要工具時，只輸出工具呼叫，不要加入確認、說明或其他文字。格式必須是 <|tool_call>call:工具名稱{參數}<tool_call|>。
+              - 需要工具時，只輸出工具呼叫，不要加入確認、說明或其他文字。
               - 收到工具結果後，直接回答使用者；只有仍需要其他工具時才再次呼叫工具。
               """;
 
@@ -229,7 +231,7 @@ public sealed class Gemma4(string modelPath, string? multimodalProjectorPath = n
 
         if (!string.IsNullOrWhiteSpace(multimodalProjectorPath) && File.Exists(multimodalProjectorPath))
         {
-            _multimodalWeights = await MtmdWeights.LoadFromFileAsync(multimodalProjectorPath, _weights, new MtmdContextParams()).ConfigureAwait(false);
+            _multimodalWeights = await MtmdWeights.LoadFromFileAsync(multimodalProjectorPath, _weights, new MtmdContextParams(), cancellationToken).ConfigureAwait(false);
         }
 
         _executor = _multimodalWeights is null
@@ -243,7 +245,6 @@ public sealed class Gemma4(string modelPath, string? multimodalProjectorPath = n
     {
         var executor = _executor ?? throw new InvalidOperationException("The model executor was not initialized.");
         var prompts = BuildPrompts(messages, executor);
-        var output = new StringBuilder();
 
         foreach (var prompt in prompts)
         {
@@ -251,17 +252,17 @@ public sealed class Gemma4(string modelPath, string? multimodalProjectorPath = n
             // (re-)evaluated by llama.cpp to estimate how many were served from KV cache.
             var submittedTokenCount = string.IsNullOrEmpty(prompt) ? 0 : _context!.Tokenize(prompt, addBos: false, special: true).Length;
             var before = _context!.NativeHandle.GetTimings();
-            output.Clear();
+            _output.Clear();
             var inferenceParams = string.IsNullOrEmpty(prompt) ? _embeddingInferenceParams! : _inferenceParams!;
             await foreach (var token in executor.InferAsync(prompt, inferenceParams, cancellationToken).ConfigureAwait(false))
             {
-                output.Append(token);
+                _output.Append(token);
             }
 
             AddUsage(usage, before, _context.NativeHandle.GetTimings(), submittedTokenCount);
         }
 
-        return output.ToString();
+        return _output.ToString();
     }
 
     private List<string> BuildPrompts(IEnumerable<ChatMessage> messages, InteractiveExecutor executor)
