@@ -14,6 +14,8 @@ namespace App_gguf
         public DataTemplate? ToolCallTemplate { get; set; }
         public DataTemplate? ToolResultTemplate { get; set; }
 
+        public DataTemplate? ToolstTemplate { get; set; }
+
         protected override DataTemplate? SelectTemplateCore(object item)
             => item is not History history
                 ? AssistantTemplate
@@ -22,6 +24,7 @@ namespace App_gguf
                     History.RoleKind.User => UserTemplate,
                     History.RoleKind.ToolCall => ToolCallTemplate,
                     History.RoleKind.ToolResult => ToolResultTemplate,
+                    History.RoleKind.Tools=>ToolstTemplate,
                     _ => AssistantTemplate
                 };
 

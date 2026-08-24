@@ -15,6 +15,9 @@
     <WindowsPackageType>None</WindowsPackageType>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
+  <ItemGroup>
+    <Page Remove="Resources\Styles\ExpanderStyles.xaml" />
+  </ItemGroup>
 
   <ItemGroup>
     <Content Include="Assets\SplashScreen.scale-200.png" />
@@ -47,6 +50,11 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\ChartClient_GGuf\ChartClient_LLamaSharp.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Update="Resources\Styles\ExpanderStyles.xaml">
+      <Generator>MSBuild:Compile</Generator>
+    </None>
   </ItemGroup>
 
   <!--

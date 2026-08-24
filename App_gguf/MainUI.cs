@@ -104,23 +104,58 @@ namespace App_gguf
 
                             case FunctionCallContent functionCall when displayedToolCallIds.Add(functionCall.CallId):
                                 toolNamesByCallId[functionCall.CallId] = functionCall.Name;
-                                Historys.Add(new History
+                                //Historys.Add(new History
+                                //{
+                                //    Role = History.RoleKind.ToolCall,
+                                //    Title = $"正在呼叫 {functionCall.Name}",
+                                //    Message = FormatToolValue(functionCall.Arguments)
+                                //});
+                                var toolcall = new History
                                 {
                                     Role = History.RoleKind.ToolCall,
                                     Title = $"正在呼叫 {functionCall.Name}",
                                     Message = FormatToolValue(functionCall.Arguments)
-                                });
+                                };
+                                var tools = Historys.LastOrDefault(x => x.Role == History.RoleKind.Tools);
+                                if(tools is not null)
+                                {
+                                    tools.Tools.Add(toolcall);
+                                }
+                                else
+                                {
+                                    Historys.Add(new History
+                                    {
+                                        Role = History.RoleKind.Tools,
+                                        Title = $"tool",
+                                        Tools = [toolcall]
+                                    });
+                                }
                                 assistantEntry = null;
                                 break;
 
                             case FunctionResultContent functionResult when displayedToolResultIds.Add(functionResult.CallId):
                                 var toolName = toolNamesByCallId.GetValueOrDefault(functionResult.CallId, "工具");
-                                Historys.Add(new History
+                                //Historys.Add(new History
+                                //{
+                                //    Role = History.RoleKind.ToolResult,
+                                //    Title = $"{toolName} 回應",
+                                //    Message = FormatToolValue(functionResult.Result)
+                                //});
+                                var toolresp = new History
                                 {
                                     Role = History.RoleKind.ToolResult,
                                     Title = $"{toolName} 回應",
                                     Message = FormatToolValue(functionResult.Result)
-                                });
+                                };
+                                var tools1 = Historys.LastOrDefault(x => x.Role == History.RoleKind.Tools);
+                                if (tools1 is not null)
+                                {
+                                    tools1.Tools.Add(toolresp);
+                                }
+                                else
+                                {
+                                    Historys.Add(toolresp);
+                                }
                                 assistantEntry = null;
                                 break;
 
@@ -177,7 +212,8 @@ namespace App_gguf
             AI,
             User,
             ToolCall,
-            ToolResult
+            ToolResult,
+            Tools,
         }
 
         [ObservableProperty]
@@ -188,5 +224,7 @@ namespace App_gguf
 
         [ObservableProperty]
         public partial string Message { set; get; } = "";
+
+        public ObservableCollection<History> Tools { set; get; } = [];
     }
 }

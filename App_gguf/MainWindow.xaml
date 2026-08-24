@@ -88,9 +88,7 @@
                 VerticalScrollMode="Enabled"
                 VerticalScrollBarVisibility="Auto"
                 Visibility="{x:Bind ConversationVisibility(LLamaCpp.Historys.Count), Mode=OneWay}">
-                <ItemsRepeater
-                    x:Name="ConversationList"
-                    ItemsSource="{x:Bind LLamaCpp.Historys}">
+                <ItemsRepeater x:Name="ConversationList" ItemsSource="{x:Bind LLamaCpp.Historys}">
                     <ItemsRepeater.Layout>
                         <StackLayout />
                     </ItemsRepeater.Layout>
@@ -98,16 +96,11 @@
                         <local:HistoryTemplateSelector>
                             <local:HistoryTemplateSelector.UserTemplate>
                                 <DataTemplate x:DataType="local:History">
-                                    <Border
-                                        Margin="40,4,0,4"
+                                    <Border Margin="40,4,0,4"
                                         Padding="10,6"
                                         HorizontalAlignment="Right"
-                                        Background="{ThemeResource SystemControlHighlightAccentBrush}"
                                         CornerRadius="8">
-                                        <TextBlock
-                                            Text="{x:Bind Message, Mode=OneWay}"
-                                            TextWrapping="Wrap"
-                                            Foreground="White" />
+                                        <TextBlock Text="{x:Bind Message, Mode=OneWay}" TextWrapping="Wrap" Foreground="White" />
                                     </Border>
                                 </DataTemplate>
                             </local:HistoryTemplateSelector.UserTemplate>
@@ -127,33 +120,36 @@
                             </local:HistoryTemplateSelector.AssistantTemplate>
                             <local:HistoryTemplateSelector.ToolCallTemplate>
                                 <DataTemplate x:DataType="local:History">
-                                    <Border
-                                        Margin="20,4"
-                                        Padding="4"
-                                        HorizontalAlignment="Stretch"
-                                        Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                                        BorderThickness="1"
-                                        CornerRadius="6">
-                                        <Expander
-                                            HorizontalAlignment="Stretch"
-                                            HorizontalContentAlignment="Stretch"
-                                            IsExpanded="False">
-                                            <Expander.Header>
-                                                <TextBlock
-                                                    Text="{x:Bind Title, Mode=OneWay}"
-                                                    Style="{StaticResource CaptionTextBlockStyle}"
-                                                    FontWeight="SemiBold"
-                                                    Foreground="{ThemeResource SystemControlHighlightAccentBrush}" />
-                                            </Expander.Header>
+                                    <Expander HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" IsExpanded="False" Style="{StaticResource CustomExpanderStyle}">
+                                        <Expander.Header>
                                             <TextBlock
-                                                Margin="8,4,8,8"
-                                                Text="{x:Bind Message, Mode=OneWay}"
-                                                TextWrapping="Wrap" />
-                                        </Expander>
-                                    </Border>
+                                                Text="{x:Bind Title, Mode=OneWay}"
+                                                Style="{StaticResource CaptionTextBlockStyle}"
+                                                FontWeight="SemiBold"
+                                                Foreground="{ThemeResource SystemControlHighlightAccentBrush}" />
+                                        </Expander.Header>
+                                        <TextBlock Margin="8,4,8,8"
+                                            Text="{x:Bind Message, Mode=OneWay}"
+                                            TextWrapping="Wrap" />
+                                    </Expander>
                                 </DataTemplate>
                             </local:HistoryTemplateSelector.ToolCallTemplate>
+                            <local:HistoryTemplateSelector.ToolstTemplate>
+                                <DataTemplate x:DataType="local:History">
+                                    <Expander Header="{Binding Title}" HorizontalAlignment="Stretch">
+                                        <ItemsControl ItemsSource="{Binding Tools}">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate x:DataType="local:History">
+                                                    <StackPanel>
+                                                        <TextBlock Text="args"/>
+                                                        <TextBlock Text=""/>
+                                                    </StackPanel>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </Expander>
+                                </DataTemplate>
+                            </local:HistoryTemplateSelector.ToolstTemplate>
                             <local:HistoryTemplateSelector.ToolResultTemplate>
                                 <DataTemplate x:DataType="local:History">
                                     <Border
