@@ -42,7 +42,8 @@ public partial class WasapiLoopbackDriver
 
             hr = audioClient.GetMixFormat(out IntPtr waveFormatPtr);
             if (hr < 0) Marshal.ThrowExceptionForHR(hr);
-
+            var wavefx = Marshal.PtrToStructure<WAVEFORMATEX>(waveFormatPtr);
+            
             try
             {
                 using var wav = WinRtWavWriter.CreateAsync(outputPath, waveFormatPtr).GetAwaiter().GetResult();

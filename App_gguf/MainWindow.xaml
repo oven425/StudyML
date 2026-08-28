@@ -223,9 +223,10 @@
                     IsEnabled="{x:Bind LLamaCpp.IsInputEnabled, Mode=OneWay}"
                     KeyDown="InputTextBox_KeyDown" />
 
-                <Grid Grid.Row="2">
+                <Grid Grid.Row="2" ColumnSpacing="3">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
                     <TextBlock
@@ -237,6 +238,24 @@
                         TextTrimming="CharacterEllipsis" />
                     <Button
                         Grid.Column="1"
+                        AutomationProperties.Name="Config chart options"
+                        ToolTipService.ToolTip="Config chart options"
+                        Command="{x:Bind LLamaCpp.OpenChartConfigCommand}">
+                        <SymbolIcon Symbol="Setting">
+                            
+
+                        </SymbolIcon>
+                        <Button.Flyout>
+                            <Flyout>
+                                <StackPanel>
+                                    <TextBlock Text="All items will be removed. Do you want to continue?" Margin="0,0,0,12" />
+                                    <Button  Content="Yes, empty my cart" />
+                                </StackPanel>
+                            </Flyout>
+                        </Button.Flyout>
+                    </Button>
+                    <Button
+                        Grid.Column="2"
                         AutomationProperties.Name="Send message"
                         ToolTipService.ToolTip="Send message"
                         Command="{x:Bind LLamaCpp.SendCommand}">

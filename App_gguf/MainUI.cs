@@ -6,6 +6,7 @@ using LLama.Abstractions;
 using LLama.Common;
 using LLama.Sampling;
 using Microsoft.Extensions.AI;
+using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Documents;
 using Microsoft.VisualBasic.FileIO;
 using QSoft.GGUF;
@@ -192,6 +193,25 @@ namespace App_gguf
                 IsLoaded = true;
                 IsSending = false;
             }
+        }
+
+        [RelayCommand]
+        async void OpenChartConfig()
+        {
+            ContentDialog dialog = new ContentDialog();
+
+            // XamlRoot must be set in the case of a ContentDialog running in a Desktop app
+            //dialog.XamlRoot = this.XamlRoot;
+            //dialog.Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style;
+            dialog.Title = "Save your work?";
+            dialog.PrimaryButtonText = "Save";
+            dialog.SecondaryButtonText = "Don't Save";
+            dialog.CloseButtonText = "Cancel";
+            dialog.DefaultButton = ContentDialogButton.Primary;
+            //dialog.Content = new ContentDialogContent();
+
+            var result = await dialog.ShowAsync();
+
         }
 
         private static string FormatToolValue(object? value)
