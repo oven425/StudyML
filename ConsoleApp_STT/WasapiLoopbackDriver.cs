@@ -60,20 +60,28 @@ public partial class WasapiLoopbackDriver
 
                 while (!cancelToken.IsCancellationRequested)
                 {
-                    Thread.Sleep(10);
-                    hr = captureClient.GetBuffer(out IntPtr pData, out uint frames, out uint flags, out _, out _);
-                    if (hr >= 0)
+                    hr = captureClient.GetNextPacketSize(out uint packetFrames);
+                    if (hr < 0) Marshal.ThrowExceptionForHR(hr);
+
+                    if (packetFrames == 0)
                     {
-                        if (frames > 0)
-                        {
-                            wav.Write(pData, frames, flags);
-                            hr = captureClient.ReleaseBuffer(frames);
-                            if (hr < 0) Marshal.ThrowExceptionForHR(hr);
-                        }
+                        Thread.Sleep(1);
+                        continue;
                     }
-                    else
+
+                    while (packetFrames > 0 && !cancelToken.IsCancellationRequested)
                     {
-                        Marshal.ThrowExceptionForHR(hr);
+                        hr = captureClient.GetBuffer(out IntPtr pData, out uint frames, out uint flags, out _, out _);
+                        if (hr < 0) Marshal.ThrowExceptionForHR(hr);
+
+                        if (frames > 0)
+                            wav.Write(pData, frames, flags);
+
+                        hr = captureClient.ReleaseBuffer(frames);
+                        if (hr < 0) Marshal.ThrowExceptionForHR(hr);
+
+                        hr = captureClient.GetNextPacketSize(out packetFrames);
+                        if (hr < 0) Marshal.ThrowExceptionForHR(hr);
                     }
                 }
 
@@ -185,7 +193,10 @@ internal sealed class WinRtWavWriter : IDisposable
     private WinRtWavWriter(IRandomAccessStream stream, byte[] header, uint bytesPerFrame, int formatSize)
     {
         _stream = stream;
-        _writer = new DataWriter(stream);
+        _writer = new DataWriter(stream)
+        {
+            ByteOrder = ByteOrder.LittleEndian
+        };
         _bytesPerFrame = bytesPerFrame;
         _formatSize = formatSize;
         _writer.WriteBytes(header);
