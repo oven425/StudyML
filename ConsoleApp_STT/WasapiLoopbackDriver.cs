@@ -1,16 +1,18 @@
 ﻿using System;
+using System.Buffers;
 using System.Buffers.Binary;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Runtime.InteropServices.Marshalling;
 using System.Runtime.InteropServices.WindowsRuntime;
 using System.Threading;
-using Windows.Storage.Streams;
 using System.Threading.Tasks;
 using Windows.Media;
 using Windows.Media.Audio;
 using Windows.Media.MediaProperties;
 using Windows.Storage;
+using Windows.Storage.Streams;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace QSoft.Audio;
 public partial class WasapiLoopbackDriver
@@ -18,6 +20,114 @@ public partial class WasapiLoopbackDriver
     private const uint AUDCLNT_STREAMFLAGS_LOOPBACK = 0x00020000;
     private const uint AUDCLNT_SHAREMODE_SHARED = 0;
     private const uint CLSCTX_ALL = 23;
+    public delegate void ReceiveDataDelegate(in WAVEFORMATEXTENSIBLE wavefmt, byte[] data, int len);
+    public event ReceiveDataDelegate OnReceiveData;
+    public unsafe void Capture(CancellationToken cancelToken)
+    {
+        CoInitializeEx(IntPtr.Zero, 0x2); // COINIT_APARTMENTTHREADED
+
+        try
+        {
+            Guid clsid = new("BCDE0395-E52F-467C-8E3D-C4579291692E");
+            Guid iidEnum = new("A95664D2-9614-4F35-A746-DE8DB63617E6");
+            int hr = CoCreateInstance(in clsid, IntPtr.Zero, CLSCTX_ALL, in iidEnum, out IntPtr pEnum);
+            if (hr < 0) Marshal.ThrowExceptionForHR(hr);
+
+            var enumerator = ComInterfaceMarshaller<IMMDeviceEnumerator>.ConvertToManaged((void*)pEnum)!;
+            hr = enumerator.GetDefaultAudioEndpoint(EDataFlow.eRender, ERole.eConsole, out IntPtr pDevice);
+            if (hr < 0) Marshal.ThrowExceptionForHR(hr);
+            var device = ComInterfaceMarshaller<IMMDevice>.ConvertToManaged((void*)pDevice)!;
+
+            Guid audioClientIid = new("1CB9AD4C-DBFA-4c32-B178-C2F568A703B2");
+            hr = device.Activate(in audioClientIid, CLSCTX_ALL, IntPtr.Zero, out IntPtr pAudioClient);
+            if (hr < 0) Marshal.ThrowExceptionForHR(hr);
+            var audioClient = ComInterfaceMarshaller<IAudioClient>.ConvertToManaged((void*)pAudioClient)!;
+
+            hr = audioClient.GetMixFormat(out IntPtr waveFormatPtr);
+            if (hr < 0) Marshal.ThrowExceptionForHR(hr);
+            var wavefx = Marshal.PtrToStructure<WAVEFORMATEXTENSIBLE>(waveFormatPtr);
+            byte[]? m_Buffer = null;
+            try
+            {
+                //using var wav = WinRtWavWriter.CreateAsync(outputPath, waveFormatPtr).GetAwaiter().GetResult();
+                hr = audioClient.Initialize(AUDCLNT_SHAREMODE_SHARED, AUDCLNT_STREAMFLAGS_LOOPBACK, 10000000, 0, waveFormatPtr, IntPtr.Zero);
+                if (hr < 0) Marshal.ThrowExceptionForHR(hr);
+
+                Guid captureClientIid = new("C8ADBD64-E71E-48A0-A4DE-185C395CD317");
+                hr = audioClient.GetService(in captureClientIid, out IntPtr pCaptureClient);
+                if (hr < 0) Marshal.ThrowExceptionForHR(hr);
+                var captureClient = ComInterfaceMarshaller<IAudioCaptureClient>.ConvertToManaged((void*)pCaptureClient)!;
+                hr = audioClient.Start();
+                if (hr < 0) Marshal.ThrowExceptionForHR(hr);
+                
+
+                while (!cancelToken.IsCancellationRequested)
+                {
+                    hr = captureClient.GetNextPacketSize(out uint packetFrames);
+                    if (hr < 0) Marshal.ThrowExceptionForHR(hr);
+
+                    if (packetFrames == 0)
+                    {
+                        Thread.Sleep(1);
+                        continue;
+                    }
+
+                    while (packetFrames > 0 && !cancelToken.IsCancellationRequested)
+                    {
+                        hr = captureClient.GetBuffer(out IntPtr pData, out uint frames, out uint flags, out _, out _);
+                        if (hr < 0) Marshal.ThrowExceptionForHR(hr);
+
+                        if (frames > 0)
+                        {
+                            var byteCount = frames * wavefx.Format.nBlockAlign;
+                            if(m_Buffer is null)
+                            {
+                                m_Buffer = ArrayPool<byte>.Shared.Rent((int)byteCount);
+                            }
+                            else if(m_Buffer.Length < byteCount)
+                            {
+                                ArrayPool<byte>.Shared.Return(m_Buffer);
+                                m_Buffer = ArrayPool<byte>.Shared.Rent((int)byteCount);
+                            }
+
+                            Marshal.Copy(pData, m_Buffer, 0, (int)byteCount);
+                            OnReceiveData?.Invoke(in wavefx, m_Buffer, (int)byteCount);
+                            //byte[] bytes = new byte[(int)byteCount];
+                            //if ((flags & AudioClientBufferFlagsSilent) == 0)
+                            //{
+                            //    if (data == IntPtr.Zero) throw new InvalidOperationException("WASAPI returned a null audio buffer.");
+                            //    Marshal.Copy(data, bytes, 0, bytes.Length);
+                            //}
+                        }
+                        //wav.Write(pData, frames, flags);
+
+                        hr = captureClient.ReleaseBuffer(frames);
+                        if (hr < 0) Marshal.ThrowExceptionForHR(hr);
+
+                        hr = captureClient.GetNextPacketSize(out packetFrames);
+                        if (hr < 0) Marshal.ThrowExceptionForHR(hr);
+                    }
+                }
+
+                hr = audioClient.Stop();
+                if (hr < 0) Marshal.ThrowExceptionForHR(hr);
+                //wav.Complete();
+            }
+            finally
+            {
+                Marshal.FreeCoTaskMem(waveFormatPtr);
+                if (m_Buffer is not null)
+                {
+                    ArrayPool<byte>.Shared.Return(m_Buffer);
+                }
+            }
+        }
+        finally
+        {
+            CoUninitialize();
+        }
+    }
+
 
     public unsafe void StartCapture(string outputPath, CancellationToken cancelToken)
     {
@@ -136,17 +246,27 @@ public partial interface IMMDevice
     [PreserveSig] int Activate(in Guid iid, uint dwClsCtx, IntPtr pActivationParams, out IntPtr ppInterface);
 }
 
-record struct WAVEFORMATEX
+[StructLayout(LayoutKind.Sequential)]
+public struct WAVEFORMATEX
 {
-    ushort wFormatTag;         /* format type */
-    ushort nChannels;          /* number of channels (i.e. mono, stereo...) */
-    uint nSamplesPerSec;     /* sample rate */
-    uint nAvgBytesPerSec;    /* for buffer estimation */
-    ushort nBlockAlign;        /* block size of data */
-    ushort wBitsPerSample;     /* number of bits per sample of mono data */
-    ushort cbSize;             /* the count in bytes of the size of */
+    public ushort wFormatTag;         /* format type */
+    public ushort nChannels;          /* number of channels (i.e. mono, stereo...) */
+    public uint nSamplesPerSec;       /* sample rate */
+    public uint nAvgBytesPerSec;      /* for buffer estimation */
+    public ushort nBlockAlign;        /* block size of data */
+    public ushort wBitsPerSample;     /* number of bits per sample of mono data */
+    public ushort cbSize;             /* the count in bytes of the size of */
     /* extra information (after cbSize) */
-};
+}
+
+[StructLayout(LayoutKind.Sequential, Pack = 2)]
+public struct WAVEFORMATEXTENSIBLE
+{
+    public WAVEFORMATEX Format;
+    public ushort wValidBitsPerSample;
+    public uint dwChannelMask;
+    public Guid SubFormat;
+}
 
 [GeneratedComInterface]
 [Guid("1CB9AD4C-DBFA-4c32-B178-C2F568A703B2")]
@@ -231,6 +351,56 @@ internal sealed class WinRtWavWriter : IDisposable
         BinaryPrimitives.WriteUInt32LittleEndian(header.AsSpan(24 + formatSize), 0);
 
         return new WinRtWavWriter(stream, header, blockAlign, formatSize);
+    }
+
+    public static async Task<WinRtWavWriter> CreateAsync(string outputPath, WAVEFORMATEXTENSIBLE format)
+    {
+        string fullPath = Path.GetFullPath(outputPath);
+        string? directory = Path.GetDirectoryName(fullPath);
+        if (directory == null)
+            throw new ArgumentException("Output path must contain a directory.", nameof(outputPath));
+
+        StorageFolder folder = await StorageFolder.GetFolderFromPathAsync(directory);
+        StorageFile file = await folder.CreateFileAsync(Path.GetFileName(fullPath), CreationCollisionOption.ReplaceExisting);
+        IRandomAccessStream stream = await file.OpenAsync(FileAccessMode.ReadWrite);
+
+        ushort blockAlign = format.Format.nBlockAlign;
+        ushort extraSize = format.Format.cbSize;
+        int formatSize = extraSize == 0 ? 16 : 18 + extraSize;
+        int structureSize = Marshal.SizeOf<WAVEFORMATEXTENSIBLE>();
+        if (formatSize > structureSize)
+            throw new ArgumentException("The WAVEFORMATEX contains unsupported extra format data.", nameof(format));
+
+        byte[] formatBytes = new byte[formatSize];
+        IntPtr formatPointer = Marshal.AllocHGlobal(formatSize);
+        try
+        {
+            Marshal.StructureToPtr(format, formatPointer, false);
+            Marshal.Copy(formatPointer, formatBytes, 0, formatBytes.Length);
+        }
+        finally
+        {
+            Marshal.FreeHGlobal(formatPointer);
+        }
+
+        byte[] header = new byte[28 + formatSize];
+        "RIFF"u8.CopyTo(header.AsSpan(0, 4));
+        BinaryPrimitives.WriteUInt32LittleEndian(header.AsSpan(4), 0);
+        "WAVE"u8.CopyTo(header.AsSpan(8, 4));
+        "fmt "u8.CopyTo(header.AsSpan(12, 4));
+        BinaryPrimitives.WriteUInt32LittleEndian(header.AsSpan(16), (uint)formatSize);
+        formatBytes.CopyTo(header, 20);
+        "data"u8.CopyTo(header.AsSpan(20 + formatSize, 4));
+        BinaryPrimitives.WriteUInt32LittleEndian(header.AsSpan(24 + formatSize), 0);
+
+        return new WinRtWavWriter(stream, header, blockAlign, formatSize);
+    }
+
+    public void Write(byte[] bytes, int len)
+    {
+        _writer.WriteBytes(bytes[0..len]);
+        Store();
+        _dataBytes += (ulong)len;
     }
 
     public unsafe void Write(IntPtr data, uint frames, uint flags)
