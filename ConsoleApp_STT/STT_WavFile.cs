@@ -42,7 +42,6 @@ namespace ConsoleApp_STT
 
             var input = await StorageFile.GetFileFromPathAsync(inputfileanme);
             MediaTranscoder tr = new() { HardwareAccelerationEnabled = true };
-
             var prepare = await tr.PrepareFileTranscodeAsync(input, outputfile, new Windows.Media.MediaProperties.MediaEncodingProfile()
             {
                 Container = new ContainerEncodingProperties()
@@ -61,7 +60,7 @@ namespace ConsoleApp_STT
                 await prepare.TranscodeAsync().AsTask(progress);
             }
 
-            var modelDirectory = "../../../../SherpaOnnx";
+            var modelDirectory = "../../../../SherpaOnnx/offline";
             //var audioPath = "test_wavs\\en.wav";
 
             var modelPath = Path.Combine(modelDirectory, "model.int8.onnx");

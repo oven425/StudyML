@@ -246,7 +246,7 @@ public partial interface IMMDevice
     [PreserveSig] int Activate(in Guid iid, uint dwClsCtx, IntPtr pActivationParams, out IntPtr ppInterface);
 }
 
-[StructLayout(LayoutKind.Sequential)]
+[StructLayout(LayoutKind.Sequential, Pack = 2)]
 public struct WAVEFORMATEX
 {
     public ushort wFormatTag;         /* format type */
@@ -353,6 +353,48 @@ internal sealed class WinRtWavWriter : IDisposable
         return new WinRtWavWriter(stream, header, blockAlign, formatSize);
     }
 
+    public static async Task<WinRtWavWriter> CreateAsync(string outputPath, WAVEFORMATEX format)
+    {
+        string fullPath = Path.GetFullPath(outputPath);
+        string? directory = Path.GetDirectoryName(fullPath);
+        if (directory == null)
+            throw new ArgumentException("Output path must contain a directory.", nameof(outputPath));
+
+        StorageFolder folder = await StorageFolder.GetFolderFromPathAsync(directory);
+        StorageFile file = await folder.CreateFileAsync(Path.GetFileName(fullPath), CreationCollisionOption.ReplaceExisting);
+        IRandomAccessStream stream = await file.OpenAsync(FileAccessMode.ReadWrite);
+
+        ushort blockAlign = format.nBlockAlign;
+        ushort extraSize = format.cbSize;
+        int formatSize = extraSize == 0 ? 16 : 18 + extraSize;
+        int structureSize = Marshal.SizeOf<WAVEFORMATEX>();
+        if (formatSize > structureSize)
+            throw new ArgumentException("The WAVEFORMATEX contains unsupported extra format data.", nameof(format));
+
+        byte[] formatBytes = new byte[formatSize];
+        IntPtr formatPointer = Marshal.AllocHGlobal(formatSize);
+        try
+        {
+            Marshal.StructureToPtr(format, formatPointer, false);
+            Marshal.Copy(formatPointer, formatBytes, 0, formatBytes.Length);
+        }
+        finally
+        {
+            Marshal.FreeHGlobal(formatPointer);
+        }
+
+        byte[] header = new byte[28 + formatSize];
+        "RIFF"u8.CopyTo(header.AsSpan(0, 4));
+        BinaryPrimitives.WriteUInt32LittleEndian(header.AsSpan(4), 0);
+        "WAVE"u8.CopyTo(header.AsSpan(8, 4));
+        "fmt "u8.CopyTo(header.AsSpan(12, 4));
+        BinaryPrimitives.WriteUInt32LittleEndian(header.AsSpan(16), (uint)formatSize);
+        formatBytes.CopyTo(header, 20);
+        "data"u8.CopyTo(header.AsSpan(20 + formatSize, 4));
+        BinaryPrimitives.WriteUInt32LittleEndian(header.AsSpan(24 + formatSize), 0);
+
+        return new WinRtWavWriter(stream, header, blockAlign, formatSize);
+    }
     public static async Task<WinRtWavWriter> CreateAsync(string outputPath, WAVEFORMATEXTENSIBLE format)
     {
         string fullPath = Path.GetFullPath(outputPath);
