@@ -12,5 +12,8 @@
   <ItemGroup>
     <PackageReference Include="org.k2fsa.sherpa.onnx" Version="1.13.5" />
   </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\ChartClient_GGuf\ChartClient_LLamaSharp.csproj" />
+  </ItemGroup>
 
 </Project>

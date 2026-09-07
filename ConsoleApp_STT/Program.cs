@@ -1,4 +1,5 @@
 ﻿using ConsoleApp_STT;
+using Microsoft.Extensions.AI;
 using QSoft.Audio;
 using SherpaOnnx;
 using System.Runtime.Intrinsics.X86;
@@ -8,6 +9,13 @@ using Windows.Media.MediaProperties;
 Console.OutputEncoding = System.Text.Encoding.UTF8;
 
 Channel<byte[]> m_AudioPCM16 = Channel.CreateUnbounded<byte[]>();
+Channel<string> m_EnglishSentences = Channel.CreateUnbounded<string>(
+    new UnboundedChannelOptions
+    {
+        SingleReader = true,
+        SingleWriter = true,
+        AllowSynchronousContinuations = false
+    });
 
 var converter = new Pcm16Mono16kConverter();
 var loopback = new WasapiLoopbackDriver();
@@ -26,7 +34,6 @@ void OnReceiveData(in WAVEFORMATEXTENSIBLE format, byte[] raw, int length)
     var pcm16k = converter.Convert(in format, raw.AsSpan(0, length));
     if (pcm16k is null || pcm16k.Length == 0)
         return;
-    //wav.Write(pcm16k, pcm16k.Length);
     m_AudioPCM16.Writer.WriteAsync(pcm16k);
 
 }
@@ -67,35 +74,94 @@ var task_capture = Task.Run(() =>
 {
     loopback.Capture(cts.Token);
 });
-var lastText = string.Empty;
-await foreach (var oo in m_AudioPCM16.Reader.ReadAllAsync())
+
+var gemmaModelPath = Path.GetFullPath(Path.Combine(
+    AppContext.BaseDirectory,
+    "../../../../gguf_gemma4/gemma-4-E2B-it-Q4_K_M.gguf"));
+
+if (!File.Exists(gemmaModelPath))
+    throw new FileNotFoundException("找不到 Gemma 4 模型。", gemmaModelPath);
+
+var options = new ChatOptions
 {
-    var ff = STT_WavStream.ConvertPcm16ToFloat(oo);
-    stream.AcceptWaveform(Pcm16Mono16kConverter.TargetSampleRate, ff);
+    Instructions = """
+    You are a professional English-to-Traditional-Chinese translator.
+    Translate the user's English speech into natural Traditional Chinese.
+    Output only the translation.
+    Do not explain, summarize, or add extra text.
+    """
+};
+var translationTask = Task.Run(async () =>
+{
+    using var translator = new QSoft.GGUF.Gemma4(gemmaModelPath);
 
-    while (recognizer.IsReady(stream))
-        recognizer.Decode(stream);
-
-    var text = recognizer.GetResult(stream).Text;
-    if (!string.IsNullOrWhiteSpace(text) && text != lastText)
+    await foreach (var english in m_EnglishSentences.Reader.ReadAllAsync())
     {
-        var write = text.AsSpan()[lastText.Length..];
-        Console.Write(write);
-        lastText = text;
+        var response = await translator.GetResponseAsync(
+        [
+            new ChatMessage(ChatRole.User,english)
+        ], options);
+
+        var translated = response.Text.Trim();
+        if (!string.IsNullOrWhiteSpace(translated))
+            Console.WriteLine($"\n[中文] {translated}");
     }
+});
 
-    if (recognizer.IsEndpoint(stream))
+var stopTask = Task.Run(Console.ReadLine);
+var lastText = string.Empty;
+
+try
+{
+    while (!cts.IsCancellationRequested)
     {
-        Console.WriteLine();
-        recognizer.Reset(stream);
-        lastText = string.Empty;
+        while (m_AudioPCM16.Reader.TryRead(out var oo))
+        {
+            var ff = STT_WavStream.ConvertPcm16ToFloat(oo);
+            stream.AcceptWaveform(Pcm16Mono16kConverter.TargetSampleRate, ff);
+
+            while (recognizer.IsReady(stream))
+                recognizer.Decode(stream);
+
+            var text = recognizer.GetResult(stream).Text;
+            if (!string.IsNullOrWhiteSpace(text) && text != lastText)
+            {
+                var write = text.AsSpan()[lastText.Length..];
+                Console.Write(write);
+                lastText = text;
+            }
+
+            if (recognizer.IsEndpoint(stream))
+            {
+                Console.WriteLine();
+                if (!string.IsNullOrWhiteSpace(text))
+                    await m_EnglishSentences.Writer.WriteAsync(text);
+
+                recognizer.Reset(stream);
+                lastText = string.Empty;
+            }
+        }
+
+        if (stopTask.IsCompleted)
+            break;
+
+        var waitForAudio = m_AudioPCM16.Reader.WaitToReadAsync(cts.Token).AsTask();
+        var completedTask = await Task.WhenAny(waitForAudio, stopTask, task_capture);
+
+        if (completedTask == stopTask || completedTask == task_capture)
+            break;
+
+        await waitForAudio;
     }
 }
-
-Console.ReadLine();
-await cts.CancelAsync();
-await task_capture;
-wav.Dispose();
+finally
+{
+    await cts.CancelAsync();
+    await task_capture;
+    m_EnglishSentences.Writer.TryComplete();
+    await translationTask;
+    wav.Dispose();
+}
 
 //var resp = await STT_WavFile.Transform();
 //Console.WriteLine(resp);
@@ -182,5 +248,4 @@ wav.Dispose();
 
 //Console.WriteLine($"音訊：{sherronxfile}");
 //Console.WriteLine($"辨識結果：{stream.Result.Text}");
-
 
