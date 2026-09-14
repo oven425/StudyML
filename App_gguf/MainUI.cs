@@ -178,10 +178,7 @@ namespace App_gguf
 
                 if (usage is not null)
                 {
-                    var cacheHitRate = usage.AdditionalCounts is not null && usage.AdditionalCounts.TryGetValue("CacheHitRate", out var rate)
-                        ? rate
-                        : 0;
-                    TokenStatus = $"輸入 {usage.InputTokenCount ?? 0} · 輸出 {usage.OutputTokenCount ?? 0} · 總計 {usage.TotalTokenCount ?? 0} tokens（快取命中率 {cacheHitRate}%）";
+                    TokenStatus = $"輸入 {usage.InputTokenCount ?? 0} · 輸出 {usage.OutputTokenCount ?? 0} · 總計 {usage.TotalTokenCount ?? 0}）";
                 }
             }
             catch (Exception ex)
@@ -223,7 +220,15 @@ namespace App_gguf
             };
     }
 
-
+    public partial class Params : ObservableObject
+    {
+        public double Temperature {  get; set; }
+        public double TopK { set; get; }
+        public double TopP { set; get; }
+        public double MinP { set; get; }
+        public double RepeatPenalty { set; get; }
+        public int MaxTokens { set; get; }
+    }
 
     public partial class History : ObservableObject
     {
