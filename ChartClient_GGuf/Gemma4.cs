@@ -630,12 +630,7 @@ public sealed class Gemma4(string modelPath, string? multimodalProjectorPath = n
         usage.OutputTokenCount = (usage.OutputTokenCount ?? 0) + outputTokens;
         usage.CachedInputTokenCount = (usage.CachedInputTokenCount ?? 0) + cachedTokens;
         usage.TotalTokenCount = (usage.InputTokenCount ?? 0) + (usage.OutputTokenCount ?? 0);
-
-        var totalInputTokens = usage.InputTokenCount ?? 0;
-        var cacheHitRate = totalInputTokens == 0 ? 0d : (usage.CachedInputTokenCount ?? 0) / (double)totalInputTokens;
-        usage.AdditionalCounts ??= [];
-        usage.AdditionalCounts["CacheHitRate"] = (long)Math.Round(cacheHitRate * 100);
-    }
+       }
 
     private void ThrowIfDisposed()
     {

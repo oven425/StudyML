@@ -28,9 +28,12 @@ WAVEFORMATEX wavefmt = new()
     wFormatTag = 1,
     wBitsPerSample = 16
 };
+//WinRtWavWriter? m_WavLoopback = null;
 var wav = await WinRtWavWriter.CreateAsync("pcm16.wav", wavefmt);
 void OnReceiveData(in WAVEFORMATEXTENSIBLE format, byte[] raw, int length)
 {
+    //m_WavLoopback ??= WinRtWavWriter.CreateAsync("aaa.wav", format).Result;
+    //m_WavLoopback.Write(raw, length);
     var pcm16k = converter.Convert(in format, raw.AsSpan(0, length));
     if (pcm16k is null || pcm16k.Length == 0)
         return;
