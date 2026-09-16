@@ -21,6 +21,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ConsoleApplication_Audio", 
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ConsoleApp_STT", "ConsoleApp_STT\ConsoleApp_STT.csproj", "{B7AFF14B-7520-47F2-9A6D-05AFD739FA0D}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ConsoleAppSLMT", "ConsoleAppSLMT\ConsoleAppSLMT.csproj", "{8C347581-3928-403C-900F-E2FF401AD15B}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -141,6 +143,18 @@ Global
 		{B7AFF14B-7520-47F2-9A6D-05AFD739FA0D}.Release|x64.Build.0 = Release|Any CPU
 		{B7AFF14B-7520-47F2-9A6D-05AFD739FA0D}.Release|x86.ActiveCfg = Release|Any CPU
 		{B7AFF14B-7520-47F2-9A6D-05AFD739FA0D}.Release|x86.Build.0 = Release|Any CPU
+		{8C347581-3928-403C-900F-E2FF401AD15B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8C347581-3928-403C-900F-E2FF401AD15B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8C347581-3928-403C-900F-E2FF401AD15B}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{8C347581-3928-403C-900F-E2FF401AD15B}.Debug|x64.Build.0 = Debug|Any CPU
+		{8C347581-3928-403C-900F-E2FF401AD15B}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{8C347581-3928-403C-900F-E2FF401AD15B}.Debug|x86.Build.0 = Debug|Any CPU
+		{8C347581-3928-403C-900F-E2FF401AD15B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8C347581-3928-403C-900F-E2FF401AD15B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8C347581-3928-403C-900F-E2FF401AD15B}.Release|x64.ActiveCfg = Release|Any CPU
+		{8C347581-3928-403C-900F-E2FF401AD15B}.Release|x64.Build.0 = Release|Any CPU
+		{8C347581-3928-403C-900F-E2FF401AD15B}.Release|x86.ActiveCfg = Release|Any CPU
+		{8C347581-3928-403C-900F-E2FF401AD15B}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
